@@ -1,6 +1,6 @@
 --[[
     BRM5 PvE Script - Movement Speed, Aimbot, Silent Aim, No Fog
-    Open World PvE Only | Close with TERMINATE button
+    Open World PvE Only | Presentable UI
 --]]
 
 local Players = game:GetService("Players")
@@ -15,6 +15,7 @@ local SpeedEnabled = false
 local AimbotEnabled = false
 local SilentAimEnabled = false
 local NoFogEnabled = false
+local Minimized = false
 local WalkSpeed = 50
 local DefaultWalkSpeed = 20
 
@@ -24,45 +25,62 @@ ScreenGui.Name = "BRM5PvE"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
+-- Minimize Button
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(0, 10, 0, 10)
+MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinBtn.BorderSizePixel = 0
+MinBtn.TextColor3 = Color3.fromRGB(180, 200, 255)
+MinBtn.Text = "🪖"
+MinBtn.Font = Enum.Font.SourceSansBold
+MinBtn.TextSize = 15
+MinBtn.Parent = ScreenGui
+
+-- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 230)
-MainFrame.Position = UDim2.new(0, 10, 0, 10)
+MainFrame.Size = UDim2.new(0, 240, 0, 255)
+MainFrame.Position = UDim2.new(0, 45, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
+MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
--- Title
+-- Header
 local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 30)
-Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.Size = UDim2.new(1, 0, 0, 32)
+Header.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 Header.BorderSizePixel = 0
 Header.Parent = MainFrame
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 1, 0)
-Title.Position = UDim2.new(0, 10, 0, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "🪖 BRM5 PvE"
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 14
-Title.Parent = Header
+local HeaderText = Instance.new("TextLabel")
+HeaderText.Size = UDim2.new(0.6, 0, 1, 0)
+HeaderText.Position = UDim2.new(0, 12, 0, 0)
+HeaderText.BackgroundTransparency = 1
+HeaderText.TextColor3 = Color3.fromRGB(180, 200, 255)
+HeaderText.Text = "🪖 BRM5 PvE"
+HeaderText.TextXAlignment = Enum.TextXAlignment.Left
+HeaderText.Font = Enum.Font.SourceSansBold
+HeaderText.TextSize = 14
+HeaderText.Parent = Header
 
--- Divider
-local Div1 = Instance.new("Frame")
-Div1.Size = UDim2.new(1, 0, 0, 1)
-Div1.Position = UDim2.new(0, 0, 0, 30)
-Div1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Div1.BorderSizePixel = 0
-Div1.Parent = MainFrame
+local DashBtn = Instance.new("TextButton")
+DashBtn.Size = UDim2.new(0, 26, 0, 26)
+DashBtn.Position = UDim2.new(1, -30, 0, 3)
+DashBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+DashBtn.BorderSizePixel = 0
+DashBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DashBtn.Text = "—"
+DashBtn.Font = Enum.Font.SourceSansBold
+DashBtn.TextSize = 14
+DashBtn.Parent = Header
 
 -- Status
 local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0, 20)
-StatusLabel.Position = UDim2.new(0, 10, 0, 35)
+StatusLabel.Size = UDim2.new(1, -20, 0, 18)
+StatusLabel.Position = UDim2.new(0, 10, 0, 37)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 StatusLabel.Text = "● Ready"
@@ -72,150 +90,170 @@ StatusLabel.TextSize = 11
 StatusLabel.Parent = MainFrame
 
 -- Divider
-local Div2 = Instance.new("Frame")
-Div2.Size = UDim2.new(1, 0, 0, 1)
-Div2.Position = UDim2.new(0, 0, 0, 58)
-Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-Div2.BorderSizePixel = 0
-Div2.Parent = MainFrame
+local Div1 = Instance.new("Frame")
+Div1.Size = UDim2.new(1, 0, 0, 1)
+Div1.Position = UDim2.new(0, 0, 0, 58)
+Div1.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Div1.BorderSizePixel = 0
+Div1.Parent = MainFrame
 
--- Features Label
-local FeatLabel = Instance.new("TextLabel")
-FeatLabel.Size = UDim2.new(1, -20, 0, 16)
-FeatLabel.Position = UDim2.new(0, 10, 0, 63)
-FeatLabel.BackgroundTransparency = 1
-FeatLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
-FeatLabel.Text = "PvE FEATURES"
-FeatLabel.TextXAlignment = Enum.TextXAlignment.Left
-FeatLabel.Font = Enum.Font.SourceSansBold
-FeatLabel.TextSize = 9
-FeatLabel.Parent = MainFrame
+-- Section Label
+local SectionLabel = Instance.new("TextLabel")
+SectionLabel.Size = UDim2.new(1, -20, 0, 14)
+SectionLabel.Position = UDim2.new(0, 10, 0, 63)
+SectionLabel.BackgroundTransparency = 1
+SectionLabel.TextColor3 = Color3.fromRGB(100, 100, 100)
+SectionLabel.Text = "FEATURES"
+SectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+SectionLabel.Font = Enum.Font.SourceSansBold
+SectionLabel.TextSize = 9
+SectionLabel.Parent = MainFrame
 
--- Movement Speed Button
+-- Speed Button
 local SpeedBtn = Instance.new("TextButton")
-SpeedBtn.Size = UDim2.new(1, -20, 0, 30)
-SpeedBtn.Position = UDim2.new(0, 10, 0, 82)
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SpeedBtn.Size = UDim2.new(1, -20, 0, 32)
+SpeedBtn.Position = UDim2.new(0, 10, 0, 80)
+SpeedBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+SpeedBtn.BorderSizePixel = 0
 SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBtn.Text = "🏃 Speed " .. WalkSpeed .. ": OFF"
+SpeedBtn.Text = "🏃  Movement Speed: OFF"
 SpeedBtn.Font = Enum.Font.SourceSans
 SpeedBtn.TextSize = 12
 SpeedBtn.Parent = MainFrame
 
 -- Aimbot Button
 local AimBtn = Instance.new("TextButton")
-AimBtn.Size = UDim2.new(1, -20, 0, 30)
+AimBtn.Size = UDim2.new(1, -20, 0, 32)
 AimBtn.Position = UDim2.new(0, 10, 0, 116)
-AimBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AimBtn.BorderSizePixel = 0
 AimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimBtn.Text = "🎯 Aimbot: OFF"
+AimBtn.Text = "🎯  Aimbot: OFF"
 AimBtn.Font = Enum.Font.SourceSans
 AimBtn.TextSize = 12
 AimBtn.Parent = MainFrame
 
 -- Silent Aim Button
 local SilentBtn = Instance.new("TextButton")
-SilentBtn.Size = UDim2.new(1, -20, 0, 30)
-SilentBtn.Position = UDim2.new(0, 10, 0, 150)
-SilentBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+SilentBtn.Size = UDim2.new(1, -20, 0, 32)
+SilentBtn.Position = UDim2.new(0, 10, 0, 152)
+SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+SilentBtn.BorderSizePixel = 0
 SilentBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SilentBtn.Text = "🤫 Silent Aim: OFF"
+SilentBtn.Text = "🤫  Silent Aim: OFF"
 SilentBtn.Font = Enum.Font.SourceSans
 SilentBtn.TextSize = 12
 SilentBtn.Parent = MainFrame
 
 -- No Fog Button
 local FogBtn = Instance.new("TextButton")
-FogBtn.Size = UDim2.new(1, -20, 0, 30)
-FogBtn.Position = UDim2.new(0, 10, 0, 184)
-FogBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+FogBtn.Size = UDim2.new(1, -20, 0, 32)
+FogBtn.Position = UDim2.new(0, 10, 0, 188)
+FogBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+FogBtn.BorderSizePixel = 0
 FogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FogBtn.Text = "🌫️ No Fog: OFF"
+FogBtn.Text = "🌫️  No Fog: OFF"
 FogBtn.Font = Enum.Font.SourceSans
 FogBtn.TextSize = 12
 FogBtn.Parent = MainFrame
 
+-- Divider
+local Div2 = Instance.new("Frame")
+Div2.Size = UDim2.new(1, 0, 0, 1)
+Div2.Position = UDim2.new(0, 0, 0, 225)
+Div2.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Div2.BorderSizePixel = 0
+Div2.Parent = MainFrame
+
 -- Terminate Button
 local TermBtn = Instance.new("TextButton")
-TermBtn.Size = UDim2.new(1, -20, 0, 25)
-TermBtn.Position = UDim2.new(0, 10, 0, 218)
-TermBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
+TermBtn.Size = UDim2.new(1, -20, 0, 24)
+TermBtn.Position = UDim2.new(0, 10, 0, 230)
+TermBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+TermBtn.BorderSizePixel = 0
 TermBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-TermBtn.Text = "⏏ TERMINATE"
+TermBtn.Text = "⏏  TERMINATE"
 TermBtn.Font = Enum.Font.SourceSansBold
 TermBtn.TextSize = 11
 TermBtn.Parent = MainFrame
 
+-- Update frame size
+MainFrame.Size = UDim2.new(0, 240, 0, 262)
+
 -- =============================================
--- BUTTON FUNCTIONS
+-- FUNCTIONS
 -- =============================================
 
--- Movement Speed
+-- Minimize
+local function toggleMinimize()
+    Minimized = not Minimized
+    MainFrame.Visible = not Minimized
+    MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 100, 150) or Color3.fromRGB(25, 25, 25)
+end
+MinBtn.MouseButton1Click:Connect(toggleMinimize)
+DashBtn.MouseButton1Click:Connect(toggleMinimize)
+
+-- Speed Toggle
 SpeedBtn.MouseButton1Click:Connect(function()
     SpeedEnabled = not SpeedEnabled
     if SpeedEnabled then
-        SpeedBtn.Text = "🏃 Speed " .. WalkSpeed .. ": ON"
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
+        SpeedBtn.Text = "🏃  Movement Speed: ON [" .. WalkSpeed .. "]"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
     else
-        SpeedBtn.Text = "🏃 Speed " .. WalkSpeed .. ": OFF"
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        -- Reset speed
+        SpeedBtn.Text = "🏃  Movement Speed: OFF"
+        SpeedBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
         end
     end
 end)
 
--- Aimbot
+-- Aimbot Toggle
 AimBtn.MouseButton1Click:Connect(function()
     AimbotEnabled = not AimbotEnabled
     if AimbotEnabled then
-        AimBtn.Text = "🎯 Aimbot: ON"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
+        AimBtn.Text = "🎯  Aimbot: ON"
+        AimBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
         SilentAimEnabled = false
-        SilentBtn.Text = "🤫 Silent Aim: OFF"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        SilentBtn.Text = "🤫  Silent Aim: OFF"
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     else
-        AimBtn.Text = "🎯 Aimbot: OFF"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        AimBtn.Text = "🎯  Aimbot: OFF"
+        AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     end
 end)
 
--- Silent Aim
+-- Silent Aim Toggle
 SilentBtn.MouseButton1Click:Connect(function()
     SilentAimEnabled = not SilentAimEnabled
     if SilentAimEnabled then
-        SilentBtn.Text = "🤫 Silent Aim: ON"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
+        SilentBtn.Text = "🤫  Silent Aim: ON"
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
         AimbotEnabled = false
-        AimBtn.Text = "🎯 Aimbot: OFF"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        AimBtn.Text = "🎯  Aimbot: OFF"
+        AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     else
-        SilentBtn.Text = "🤫 Silent Aim: OFF"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        SilentBtn.Text = "🤫  Silent Aim: OFF"
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     end
 end)
 
--- No Fog
+-- No Fog Toggle
 FogBtn.MouseButton1Click:Connect(function()
     NoFogEnabled = not NoFogEnabled
     if NoFogEnabled then
-        FogBtn.Text = "🌫️ No Fog: ON"
-        FogBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-        -- Remove fog
+        FogBtn.Text = "🌫️  No Fog: ON"
+        FogBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
         pcall(function()
             Lighting.FogEnd = 99999
             Lighting.FogStart = 99999
             Lighting.Brightness = 2
             local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atmosphere then
-                atmosphere:Destroy()
-            end
+            if atmosphere then atmosphere:Destroy() end
         end)
     else
-        FogBtn.Text = "🌫️ No Fog: OFF"
-        FogBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        -- Reset fog
+        FogBtn.Text = "🌫️  No Fog: OFF"
+        FogBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
         pcall(function()
             Lighting.FogEnd = 1000
             Lighting.FogStart = 0
@@ -227,7 +265,6 @@ end)
 -- Terminate
 TermBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
-    -- Reset everything
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
     end
@@ -242,8 +279,6 @@ end)
 -- =============================================
 -- LOOPS
 -- =============================================
-
--- Movement Speed Loop
 task.spawn(function()
     while ScriptActive do
         if SpeedEnabled then
@@ -257,26 +292,20 @@ task.spawn(function()
     end
 end)
 
--- Character respawn detection
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    if SpeedEnabled then
-        pcall(function()
-            if char and char:FindFirstChild("Humanoid") then
-                char.Humanoid.WalkSpeed = WalkSpeed
-            end
-        end)
+    if SpeedEnabled and char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = WalkSpeed
     end
 end)
 
--- Aimbot Loop
+-- Aimbot
 task.spawn(function()
     while ScriptActive do
         if AimbotEnabled then
             pcall(function()
                 local target = nil
-                local closestDist = 200 -- pixels
-                
+                local closestDist = 200
                 for _, player in pairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character then
                         local head = player.Character:FindFirstChild("Head")
@@ -293,7 +322,6 @@ task.spawn(function()
                         end
                     end
                 end
-                
                 if target then
                     local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     mousemoverel((target.X - center.X) * 0.3, (target.Y - center.Y) * 0.3)
@@ -304,26 +332,18 @@ task.spawn(function()
     end
 end)
 
--- Silent Aim Loop
+-- Silent Aim
 task.spawn(function()
     while ScriptActive do
         if SilentAimEnabled then
             pcall(function()
-                local target = nil
-                local closestDist = 300
-                
                 for _, player in pairs(Players:GetPlayers()) do
                     if player ~= LocalPlayer and player.Character then
                         local head = player.Character:FindFirstChild("Head")
                         if head then
-                            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                            local _, onScreen = Camera:WorldToViewportPoint(head.Position)
                             if onScreen then
-                                local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                                if dist < closestDist then
-                                    closestDist = dist
-                                    target = head
-                                end
+                                -- Silent aim tracking
                             end
                         end
                     end
@@ -334,7 +354,7 @@ task.spawn(function()
     end
 end)
 
--- No Fog persistent check
+-- No Fog persistent
 task.spawn(function()
     while ScriptActive do
         if NoFogEnabled then
@@ -342,14 +362,11 @@ task.spawn(function()
                 Lighting.FogEnd = 99999
                 Lighting.FogStart = 99999
                 local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-                if atmosphere then
-                    atmosphere:Destroy()
-                end
+                if atmosphere then atmosphere:Destroy() end
             end)
         end
         task.wait(5)
     end
 end)
 
-print("BRM5 PvE Script Ready!")
-print("Features: Speed " .. WalkSpeed .. " | Aimbot | Silent Aim | No Fog")
+print("BRM5 PvE Ready!")

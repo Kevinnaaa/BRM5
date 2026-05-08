@@ -15,8 +15,8 @@ local SpeedEnabled = false
 local AimbotEnabled = false
 local SilentAimEnabled = false
 local NoFogEnabled = false
-local WalkSpeed = 30
-local DefaultWalkSpeed = 16
+local WalkSpeed = 50
+local DefaultWalkSpeed = 20
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")

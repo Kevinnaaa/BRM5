@@ -17,7 +17,10 @@ local SilentAimEnabled = false
 local NoFogEnabled = false
 local Minimized = false
 local WalkSpeed = 50
-local DefaultWalkSpeed = 20
+local DefaultWalkSpeed = 35
+
+-- Silent Aim variables
+local SilentTarget = nil
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -39,7 +42,7 @@ MinBtn.Parent = ScreenGui
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 240, 0, 255)
+MainFrame.Size = UDim2.new(0, 240, 0, 262)
 MainFrame.Position = UDim2.new(0, 45, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderSizePixel = 0
@@ -177,9 +180,6 @@ TermBtn.Font = Enum.Font.SourceSansBold
 TermBtn.TextSize = 11
 TermBtn.Parent = MainFrame
 
--- Update frame size
-MainFrame.Size = UDim2.new(0, 240, 0, 262)
-
 -- =============================================
 -- FUNCTIONS
 -- =============================================
@@ -235,6 +235,7 @@ SilentBtn.MouseButton1Click:Connect(function()
     else
         SilentBtn.Text = "🤫  Silent Aim: OFF"
         SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        SilentTarget = nil
     end
 end)
 
@@ -265,6 +266,7 @@ end)
 -- Terminate
 TermBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
+    SilentTarget = nil
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
     end
@@ -277,8 +279,55 @@ TermBtn.MouseButton1Click:Connect(function()
 end)
 
 -- =============================================
+-- SILENT AIM - Snaps on click, restores after
+-- =============================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        pcall(function()
+            local closest = nil
+            local closestDist = 500
+            
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer and player.Character then
+                    local head = player.Character:FindFirstChild("Head")
+                    if head then
+                        local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+                        if onScreen then
+                            local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closest = head
+                            end
+                        end
+                    end
+                end
+            end
+            
+            if closest then
+                local oldCFrame = Camera.CFrame
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, closest.Position)
+                SilentTarget = {old = oldCFrame, target = closest}
+            end
+        end)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if SilentTarget then
+            pcall(function()
+                Camera.CFrame = SilentTarget.old
+            end)
+            SilentTarget = nil
+        end
+    end
+end)
+
+-- =============================================
 -- LOOPS
 -- =============================================
+
+-- Speed Loop
 task.spawn(function()
     while ScriptActive do
         if SpeedEnabled then
@@ -292,6 +341,7 @@ task.spawn(function()
     end
 end)
 
+-- Speed on respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
     if SpeedEnabled and char and char:FindFirstChild("Humanoid") then
@@ -299,7 +349,7 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end
 end)
 
--- Aimbot
+-- Aimbot Loop
 task.spawn(function()
     while ScriptActive do
         if AimbotEnabled then
@@ -332,28 +382,6 @@ task.spawn(function()
     end
 end)
 
--- Silent Aim
-task.spawn(function()
-    while ScriptActive do
-        if SilentAimEnabled then
-            pcall(function()
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character then
-                        local head = player.Character:FindFirstChild("Head")
-                        if head then
-                            local _, onScreen = Camera:WorldToViewportPoint(head.Position)
-                            if onScreen then
-                                -- Silent aim tracking
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-        task.wait(0.05)
-    end
-end)
-
 -- No Fog persistent
 task.spawn(function()
     while ScriptActive do
@@ -369,4 +397,4 @@ task.spawn(function()
     end
 end)
 
-print("BRM5 PvE Ready!")
+print("BRM5 PvE Ready! Speed:" .. WalkSpeed .. " | Aimbot | Silent Aim | No Fog")

@@ -1,6 +1,6 @@
 --[[
-    BRM5 PvE Script - Fixed ESP + Silent Aim for NPCs
-    Works on AI enemies in Open World
+    BRM5 PvE Script - Movement Speed, Aimbot, Silent Aim, No Fog, Enemy ESP
+    Open World PvE Only | Fixed ESP + Speed + Silent Aim
 --]]
 
 local Players = game:GetService("Players")
@@ -26,13 +26,12 @@ local SilentTarget = nil
 local ESPObjects = {}
 
 -- =============================================
--- FIXED ESP - Works on Players AND NPCs
+-- ENEMY DETECTION (Players + NPCs)
 -- =============================================
 local function isEnemy(obj)
     if not obj:IsA("Model") then return false end
     if obj == LocalPlayer.Character then return false end
     
-    -- Check if it's a player
     local player = Players:GetPlayerFromCharacter(obj)
     if player then
         if player == LocalPlayer then return false end
@@ -40,7 +39,6 @@ local function isEnemy(obj)
         return true
     end
     
-    -- Check if it's an NPC (has Humanoid + Health > 0)
     local humanoid = obj:FindFirstChild("Humanoid")
     if humanoid and humanoid.Health > 0 then
         return true
@@ -53,13 +51,14 @@ local function getTargetPart(obj)
     return obj:FindFirstChild("Head") or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
 end
 
+-- =============================================
+-- FIXED ESP
+-- =============================================
 local function updateESP()
-    -- Clear old ESP
     for _, esp in pairs(ESPObjects) do
         esp.Box.Visible = false
         esp.Name.Visible = false
         esp.Distance.Visible = false
-        esp.HealthBar.Visible = false
         esp.HealthFill.Visible = false
         esp.HeadDot.Visible = false
     end
@@ -72,7 +71,6 @@ local function updateESP()
     
     local index = 1
     
-    -- Search all models in workspace
     for _, obj in pairs(Workspace:GetDescendants()) do
         if isEnemy(obj) then
             local targetPart = getTargetPart(obj)
@@ -85,9 +83,7 @@ local function updateESP()
                 if onScreen then
                     local distance = (myRoot.Position - targetPart.Position).Magnitude
                     local humanoid = obj:FindFirstChild("Humanoid")
-                    local name = obj.Name
                     
-                    -- Get or create ESP for this index
                     if not ESPObjects[index] then
                         ESPObjects[index] = {
                             Box = Drawing.new("Square"),
@@ -100,7 +96,6 @@ local function updateESP()
                     
                     local esp = ESPObjects[index]
                     
-                    -- Box
                     local boxHeight = (headPos.Y - screenPos.Y) * 0.8
                     local boxWidth = boxHeight * 0.5
                     local boxX = screenPos.X - boxWidth / 2
@@ -113,16 +108,14 @@ local function updateESP()
                     esp.Box.Size = Vector2.new(math.max(boxWidth, 10), math.max(boxHeight, 10))
                     esp.Box.Position = Vector2.new(boxX, boxY)
                     
-                    -- Name
                     esp.Name.Visible = true
-                    esp.Name.Text = name
+                    esp.Name.Text = obj.Name
                     esp.Name.Color = Color3.fromRGB(255, 255, 255)
                     esp.Name.Size = 13
                     esp.Name.Center = true
                     esp.Name.Outline = true
                     esp.Name.Position = Vector2.new(screenPos.X, boxY - 15)
                     
-                    -- Distance
                     esp.Distance.Visible = true
                     esp.Distance.Text = math.floor(distance) .. "s"
                     esp.Distance.Color = Color3.fromRGB(200, 200, 200)
@@ -131,7 +124,6 @@ local function updateESP()
                     esp.Distance.Outline = true
                     esp.Distance.Position = Vector2.new(screenPos.X, boxY + boxHeight + 5)
                     
-                    -- Health bar
                     if humanoid then
                         local health = humanoid.Health / humanoid.MaxHealth
                         esp.HealthFill.Visible = true
@@ -141,7 +133,6 @@ local function updateESP()
                         esp.HealthFill.Position = Vector2.new(boxX - 4, boxY + boxHeight * (1 - health))
                     end
                     
-                    -- Head dot
                     esp.HeadDot.Visible = true
                     esp.HeadDot.Color = Color3.fromRGB(255, 0, 0)
                     esp.HeadDot.Filled = true
@@ -168,7 +159,7 @@ local function clearESP()
 end
 
 -- =============================================
--- FIXED SILENT AIM - Works on NPCs too
+-- FIXED SILENT AIM (NPCs + Players)
 -- =============================================
 local function findBestTarget()
     local best = nil
@@ -216,7 +207,7 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- =============================================
--- GUI (same as before but with fixed features)
+-- GUI
 -- =============================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BRM5PvE"
@@ -284,7 +275,6 @@ StatusLabel.Font = Enum.Font.SourceSans
 StatusLabel.TextSize = 11
 StatusLabel.Parent = MainFrame
 
--- Divider
 local Div1 = Instance.new("Frame")
 Div1.Size = UDim2.new(1, 0, 0, 1)
 Div1.Position = UDim2.new(0, 0, 0, 58)
@@ -303,7 +293,6 @@ SectionLabel.Font = Enum.Font.SourceSansBold
 SectionLabel.TextSize = 9
 SectionLabel.Parent = MainFrame
 
--- Buttons
 local function makeBtn(y, text)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 32)
@@ -357,6 +346,9 @@ SpeedBtn.MouseButton1Click:Connect(function()
     SpeedEnabled = not SpeedEnabled
     SpeedBtn.Text = SpeedEnabled and "🏃  Speed: ON ["..WalkSpeed.."]" or "🏃  Movement Speed: OFF"
     SpeedBtn.BackgroundColor3 = SpeedEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
+    if not SpeedEnabled and LocalPlayer.Character then
+        pcall(function() LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed end)
+    end
 end)
 
 AimBtn.MouseButton1Click:Connect(function()
@@ -393,6 +385,10 @@ end)
 TermBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     clearESP()
+    if LocalPlayer.Character then
+        pcall(function() LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed end)
+    end
+    pcall(function() Lighting.FogEnd = 1000; Lighting.FogStart = 0 end)
     ScreenGui:Destroy()
 end)
 
@@ -400,17 +396,77 @@ end)
 -- LOOPS
 -- =============================================
 
--- Speed
+-- Speed Loop (Fixed - CFrame-based movement)
 task.spawn(function()
     while ScriptActive do
         if SpeedEnabled and LocalPlayer.Character then
-            pcall(function() LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed end)
+            pcall(function()
+                local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+                
+                if humanoid then
+                    humanoid.WalkSpeed = WalkSpeed
+                end
+                
+                if root then
+                    local moveVector = Vector3.zero
+                    if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVector += Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVector -= Camera.CFrame.LookVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVector -= Camera.CFrame.RightVector end
+                    if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVector += Camera.CFrame.RightVector end
+                    
+                    if moveVector.Magnitude > 0 then
+                        root.CFrame = root.CFrame + (moveVector.Unit * (WalkSpeed / 40))
+                    end
+                end
+            end)
         end
-        task.wait(0.5)
+        task.wait()
     end
 end)
 
--- ESP
+-- Speed on respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    if SpeedEnabled then
+        pcall(function() char.Humanoid.WalkSpeed = WalkSpeed end)
+    end
+end)
+
+-- Aimbot Loop
+task.spawn(function()
+    while ScriptActive do
+        if AimbotEnabled then
+            pcall(function()
+                local target = nil
+                local closestDist = 200
+                for _, obj in pairs(Workspace:GetDescendants()) do
+                    if isEnemy(obj) then
+                        local head = obj:FindFirstChild("Head")
+                        if head then
+                            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                            if onScreen then
+                                local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                                if dist < closestDist then
+                                    closestDist = dist
+                                    target = screenPos
+                                end
+                            end
+                        end
+                    end
+                end
+                if target then
+                    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    mousemoverel((target.X - center.X) * 0.3, (target.Y - center.Y) * 0.3)
+                end
+            end)
+        end
+        task.wait()
+    end
+end)
+
+-- ESP Loop
 task.spawn(function()
     while ScriptActive do
         updateESP()
@@ -418,14 +474,14 @@ task.spawn(function()
     end
 end)
 
--- No Fog
+-- No Fog Loop
 task.spawn(function()
     while ScriptActive do
         if NoFogEnabled then
-            pcall(function() Lighting.FogEnd = 99999 end)
+            pcall(function() Lighting.FogEnd = 99999; Lighting.FogStart = 99999 end)
         end
         task.wait(5)
     end
 end)
 
-print("BRM5 PvE Ready! ESP + Silent Aim now works on NPCs!")
+print("BRM5 PvE Ready! ESP + Silent Aim + Speed (CFrame) | by Maryyy")

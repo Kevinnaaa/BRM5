@@ -1,6 +1,6 @@
 --[[
-    BRM5 PvE Script - Movement Speed, Aimbot, Silent Aim, No Fog, Enemy ESP
-    Open World PvE Only | Presentable UI
+    BRM5 PvE Script - Fixed ESP + Silent Aim for NPCs
+    Works on AI enemies in Open World
 --]]
 
 local Players = game:GetService("Players")
@@ -9,6 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
 
 local ScriptActive = true
 local SpeedEnabled = false
@@ -17,191 +18,211 @@ local SilentAimEnabled = false
 local NoFogEnabled = false
 local ESPEnabled = false
 local Minimized = false
-local WalkSpeed = 70
-local DefaultWalkSpeed = 45
-
--- Silent Aim variables
+local WalkSpeed = 50
+local DefaultWalkSpeed = 35
 local SilentTarget = nil
 
 -- ESP Storage
 local ESPObjects = {}
 
 -- =============================================
--- ESP FUNCTIONS
+-- FIXED ESP - Works on Players AND NPCs
 -- =============================================
-local function createESP(player)
-    local esp = {
-        Box = Drawing.new("Square"),
-        Name = Drawing.new("Text"),
-        Distance = Drawing.new("Text"),
-        HealthBar = Drawing.new("Square"),
-        HealthFill = Drawing.new("Square"),
-        HeadDot = Drawing.new("Circle")
-    }
+local function isEnemy(obj)
+    if not obj:IsA("Model") then return false end
+    if obj == LocalPlayer.Character then return false end
     
-    esp.Box.Color = Color3.fromRGB(255, 50, 50)
-    esp.Box.Thickness = 1
-    esp.Box.Transparency = 1
-    esp.Box.Filled = false
-    esp.Box.Visible = false
+    -- Check if it's a player
+    local player = Players:GetPlayerFromCharacter(obj)
+    if player then
+        if player == LocalPlayer then return false end
+        if player.Team == LocalPlayer.Team then return false end
+        return true
+    end
     
-    esp.Name.Color = Color3.fromRGB(255, 255, 255)
-    esp.Name.Size = 13
-    esp.Name.Center = true
-    esp.Name.Outline = true
-    esp.Name.Visible = false
+    -- Check if it's an NPC (has Humanoid + Health > 0)
+    local humanoid = obj:FindFirstChild("Humanoid")
+    if humanoid and humanoid.Health > 0 then
+        return true
+    end
     
-    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
-    esp.Distance.Size = 12
-    esp.Distance.Center = true
-    esp.Distance.Outline = true
-    esp.Distance.Visible = false
-    
-    esp.HealthBar.Color = Color3.fromRGB(50, 50, 50)
-    esp.HealthBar.Thickness = 1
-    esp.HealthBar.Filled = true
-    esp.HealthBar.Visible = false
-    
-    esp.HealthFill.Color = Color3.fromRGB(50, 255, 50)
-    esp.HealthFill.Thickness = 1
-    esp.HealthFill.Filled = true
-    esp.HealthFill.Visible = false
-    
-    esp.HeadDot.Color = Color3.fromRGB(255, 0, 0)
-    esp.HeadDot.Filled = true
-    esp.HeadDot.NumSides = 30
-    esp.HeadDot.Radius = 5
-    esp.HeadDot.Visible = false
-    
-    ESPObjects[player] = esp
-    return esp
+    return false
+end
+
+local function getTargetPart(obj)
+    return obj:FindFirstChild("Head") or obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso")
 end
 
 local function updateESP()
-    for player, esp in pairs(ESPObjects) do
+    -- Clear old ESP
+    for _, esp in pairs(ESPObjects) do
+        esp.Box.Visible = false
+        esp.Name.Visible = false
+        esp.Distance.Visible = false
+        esp.HealthBar.Visible = false
+        esp.HealthFill.Visible = false
+        esp.HeadDot.Visible = false
+    end
+    
+    if not ESPEnabled then return end
+    if not LocalPlayer.Character then return end
+    
+    local myRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    
+    local index = 1
+    
+    -- Search all models in workspace
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if isEnemy(obj) then
+            local targetPart = getTargetPart(obj)
+            local head = obj:FindFirstChild("Head")
+            
+            if targetPart and head then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+                local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                
+                if onScreen then
+                    local distance = (myRoot.Position - targetPart.Position).Magnitude
+                    local humanoid = obj:FindFirstChild("Humanoid")
+                    local name = obj.Name
+                    
+                    -- Get or create ESP for this index
+                    if not ESPObjects[index] then
+                        ESPObjects[index] = {
+                            Box = Drawing.new("Square"),
+                            Name = Drawing.new("Text"),
+                            Distance = Drawing.new("Text"),
+                            HealthFill = Drawing.new("Square"),
+                            HeadDot = Drawing.new("Circle")
+                        }
+                    end
+                    
+                    local esp = ESPObjects[index]
+                    
+                    -- Box
+                    local boxHeight = (headPos.Y - screenPos.Y) * 0.8
+                    local boxWidth = boxHeight * 0.5
+                    local boxX = screenPos.X - boxWidth / 2
+                    local boxY = screenPos.Y
+                    
+                    esp.Box.Visible = true
+                    esp.Box.Color = Color3.fromRGB(255, 50, 50)
+                    esp.Box.Thickness = 1
+                    esp.Box.Filled = false
+                    esp.Box.Size = Vector2.new(math.max(boxWidth, 10), math.max(boxHeight, 10))
+                    esp.Box.Position = Vector2.new(boxX, boxY)
+                    
+                    -- Name
+                    esp.Name.Visible = true
+                    esp.Name.Text = name
+                    esp.Name.Color = Color3.fromRGB(255, 255, 255)
+                    esp.Name.Size = 13
+                    esp.Name.Center = true
+                    esp.Name.Outline = true
+                    esp.Name.Position = Vector2.new(screenPos.X, boxY - 15)
+                    
+                    -- Distance
+                    esp.Distance.Visible = true
+                    esp.Distance.Text = math.floor(distance) .. "s"
+                    esp.Distance.Color = Color3.fromRGB(200, 200, 200)
+                    esp.Distance.Size = 12
+                    esp.Distance.Center = true
+                    esp.Distance.Outline = true
+                    esp.Distance.Position = Vector2.new(screenPos.X, boxY + boxHeight + 5)
+                    
+                    -- Health bar
+                    if humanoid then
+                        local health = humanoid.Health / humanoid.MaxHealth
+                        esp.HealthFill.Visible = true
+                        esp.HealthFill.Color = health > 0.5 and Color3.fromRGB(50, 255, 50) or (health > 0.25 and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(255, 50, 50))
+                        esp.HealthFill.Filled = true
+                        esp.HealthFill.Size = Vector2.new(2, boxHeight * health)
+                        esp.HealthFill.Position = Vector2.new(boxX - 4, boxY + boxHeight * (1 - health))
+                    end
+                    
+                    -- Head dot
+                    esp.HeadDot.Visible = true
+                    esp.HeadDot.Color = Color3.fromRGB(255, 0, 0)
+                    esp.HeadDot.Filled = true
+                    esp.HeadDot.NumSides = 30
+                    esp.HeadDot.Radius = 4
+                    esp.HeadDot.Position = Vector2.new(screenPos.X, headPos.Y)
+                    
+                    index = index + 1
+                end
+            end
+        end
+    end
+end
+
+local function clearESP()
+    for _, esp in pairs(ESPObjects) do
+        pcall(function() esp.Box:Remove() end)
+        pcall(function() esp.Name:Remove() end)
+        pcall(function() esp.Distance:Remove() end)
+        pcall(function() esp.HealthFill:Remove() end)
+        pcall(function() esp.HeadDot:Remove() end)
+    end
+    ESPObjects = {}
+end
+
+-- =============================================
+-- FIXED SILENT AIM - Works on NPCs too
+-- =============================================
+local function findBestTarget()
+    local best = nil
+    local bestDist = 1000
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if isEnemy(obj) then
+            local head = obj:FindFirstChild("Head")
+            if head then
+                local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+                if onScreen then
+                    local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                    if dist < bestDist then
+                        bestDist = dist
+                        best = head
+                    end
+                end
+            end
+        end
+    end
+    
+    return best
+end
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
         pcall(function()
-            if not player.Character or not player.Character:FindFirstChild("Humanoid") then
-                esp.Box.Visible = false
-                esp.Name.Visible = false
-                esp.Distance.Visible = false
-                esp.HealthBar.Visible = false
-                esp.HealthFill.Visible = false
-                esp.HeadDot.Visible = false
-                return
-            end
-            
-            local humanoid = player.Character.Humanoid
-            if humanoid.Health <= 0 then
-                esp.Box.Visible = false
-                esp.Name.Visible = false
-                esp.Distance.Visible = false
-                esp.HealthBar.Visible = false
-                esp.HealthFill.Visible = false
-                esp.HeadDot.Visible = false
-                return
-            end
-            
-            -- Team check (don't ESP teammates)
-            if player.Team == LocalPlayer.Team and player ~= LocalPlayer then
-                esp.Box.Visible = false
-                return
-            end
-            
-            local char = player.Character
-            local head = char:FindFirstChild("Head")
-            local root = char:FindFirstChild("HumanoidRootPart")
-            
-            if not head or not root then return end
-            
-            local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-            local rootPos, rootOnScreen = Camera:WorldToViewportPoint(root.Position)
-            
-            if rootOnScreen then
-                local distance = (LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and (LocalPlayer.Character.HumanoidRootPart.Position - root.Position).Magnitude) or 0
-                
-                -- Box
-                local boxHeight = (headPos.Y - rootPos.Y) * 1.2
-                local boxWidth = boxHeight * 0.5
-                local boxX = rootPos.X - boxWidth / 2
-                local boxY = rootPos.Y - boxHeight * 0.1
-                
-                esp.Box.Visible = true
-                esp.Box.Size = Vector2.new(boxWidth, boxHeight)
-                esp.Box.Position = Vector2.new(boxX, boxY)
-                esp.Box.Color = Color3.fromRGB(255, 50, 50)
-                
-                -- Name
-                esp.Name.Visible = true
-                esp.Name.Text = player.Name
-                esp.Name.Position = Vector2.new(rootPos.X, boxY - 16)
-                
-                -- Distance
-                esp.Distance.Visible = true
-                esp.Distance.Text = math.floor(distance) .. "s"
-                esp.Distance.Position = Vector2.new(rootPos.X, boxY + boxHeight + 2)
-                
-                -- Health bar
-                local health = humanoid.Health / humanoid.MaxHealth
-                esp.HealthBar.Visible = true
-                esp.HealthBar.Size = Vector2.new(2, boxHeight)
-                esp.HealthBar.Position = Vector2.new(boxX - 5, boxY)
-                
-                esp.HealthFill.Visible = true
-                esp.HealthFill.Size = Vector2.new(2, boxHeight * health)
-                esp.HealthFill.Position = Vector2.new(boxX - 5, boxY + boxHeight * (1 - health))
-                esp.HealthFill.Color = health > 0.5 and Color3.fromRGB(50, 255, 50) or (health > 0.25 and Color3.fromRGB(255, 255, 0) or Color3.fromRGB(255, 50, 50))
-                
-                -- Head dot
-                esp.HeadDot.Visible = true
-                esp.HeadDot.Position = Vector2.new(headPos.X, headPos.Y)
-            else
-                esp.Box.Visible = false
-                esp.Name.Visible = false
-                esp.Distance.Visible = false
-                esp.HealthBar.Visible = false
-                esp.HealthFill.Visible = false
-                esp.HeadDot.Visible = false
+            local target = findBestTarget()
+            if target then
+                local oldCFrame = Camera.CFrame
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+                SilentTarget = {old = oldCFrame}
             end
         end)
     end
-end
+end)
 
-local function removeESP(player)
-    if ESPObjects[player] then
-        ESPObjects[player].Box:Remove()
-        ESPObjects[player].Name:Remove()
-        ESPObjects[player].Distance:Remove()
-        ESPObjects[player].HealthBar:Remove()
-        ESPObjects[player].HealthFill:Remove()
-        ESPObjects[player].HeadDot:Remove()
-        ESPObjects[player] = nil
-    end
-end
-
--- Initialize ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        createESP(player)
-    end
-end
-
--- Handle players joining/leaving
-Players.PlayerAdded:Connect(function(player)
-    if player ~= LocalPlayer then
-        createESP(player)
+UserInputService.InputEnded:Connect(function(input)
+    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if SilentTarget then
+            pcall(function() Camera.CFrame = SilentTarget.old end)
+            SilentTarget = nil
+        end
     end
 end)
-Players.PlayerRemoving:Connect(removeESP)
 
 -- =============================================
--- GUI
+-- GUI (same as before but with fixed features)
 -- =============================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BRM5PvE"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
--- Minimize Button
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 45, 0, 45)
 MinBtn.Position = UDim2.new(0, 10, 0, 10)
@@ -214,9 +235,8 @@ MinBtn.TextSize = 20
 MinBtn.Draggable = true
 MinBtn.Parent = ScreenGui
 
--- Main Frame
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 240, 0, 295)
+MainFrame.Size = UDim2.new(0, 240, 0, 298)
 MainFrame.Position = UDim2.new(0, 60, 0, 10)
 MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 MainFrame.BorderSizePixel = 0
@@ -225,7 +245,6 @@ MainFrame.Draggable = true
 MainFrame.Visible = true
 MainFrame.Parent = ScreenGui
 
--- Header
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 32)
 Header.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
@@ -254,13 +273,12 @@ DashBtn.Font = Enum.Font.SourceSansBold
 DashBtn.TextSize = 14
 DashBtn.Parent = Header
 
--- Status
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, -20, 0, 18)
 StatusLabel.Position = UDim2.new(0, 10, 0, 37)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-StatusLabel.Text = "● Ready"
+StatusLabel.Text = "● Ready | PvE Mode"
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Font = Enum.Font.SourceSans
 StatusLabel.TextSize = 11
@@ -274,7 +292,6 @@ Div1.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Div1.BorderSizePixel = 0
 Div1.Parent = MainFrame
 
--- Section Label
 local SectionLabel = Instance.new("TextLabel")
 SectionLabel.Size = UDim2.new(1, -20, 0, 14)
 SectionLabel.Position = UDim2.new(0, 10, 0, 63)
@@ -286,67 +303,27 @@ SectionLabel.Font = Enum.Font.SourceSansBold
 SectionLabel.TextSize = 9
 SectionLabel.Parent = MainFrame
 
--- Speed Button
-local SpeedBtn = Instance.new("TextButton")
-SpeedBtn.Size = UDim2.new(1, -20, 0, 32)
-SpeedBtn.Position = UDim2.new(0, 10, 0, 80)
-SpeedBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-SpeedBtn.BorderSizePixel = 0
-SpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedBtn.Text = "🏃  Movement Speed: OFF"
-SpeedBtn.Font = Enum.Font.SourceSans
-SpeedBtn.TextSize = 12
-SpeedBtn.Parent = MainFrame
+-- Buttons
+local function makeBtn(y, text)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 32)
+    btn.Position = UDim2.new(0, 10, 0, y)
+    btn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    btn.BorderSizePixel = 0
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.Text = text
+    btn.Font = Enum.Font.SourceSans
+    btn.TextSize = 12
+    btn.Parent = MainFrame
+    return btn
+end
 
--- Aimbot Button
-local AimBtn = Instance.new("TextButton")
-AimBtn.Size = UDim2.new(1, -20, 0, 32)
-AimBtn.Position = UDim2.new(0, 10, 0, 116)
-AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-AimBtn.BorderSizePixel = 0
-AimBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimBtn.Text = "🎯  Aimbot: OFF"
-AimBtn.Font = Enum.Font.SourceSans
-AimBtn.TextSize = 12
-AimBtn.Parent = MainFrame
+local SpeedBtn = makeBtn(80, "🏃  Movement Speed: OFF")
+local AimBtn = makeBtn(116, "🎯  Aimbot: OFF")
+local SilentBtn = makeBtn(152, "🤫  Silent Aim: OFF")
+local ESPBtn = makeBtn(188, "👁️  Enemy ESP: OFF")
+local FogBtn = makeBtn(224, "🌫️  No Fog: OFF")
 
--- Silent Aim Button
-local SilentBtn = Instance.new("TextButton")
-SilentBtn.Size = UDim2.new(1, -20, 0, 32)
-SilentBtn.Position = UDim2.new(0, 10, 0, 152)
-SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-SilentBtn.BorderSizePixel = 0
-SilentBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SilentBtn.Text = "🤫  Silent Aim: OFF"
-SilentBtn.Font = Enum.Font.SourceSans
-SilentBtn.TextSize = 12
-SilentBtn.Parent = MainFrame
-
--- ESP Button
-local ESPBtn = Instance.new("TextButton")
-ESPBtn.Size = UDim2.new(1, -20, 0, 32)
-ESPBtn.Position = UDim2.new(0, 10, 0, 188)
-ESPBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-ESPBtn.BorderSizePixel = 0
-ESPBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ESPBtn.Text = "👁️  Enemy ESP: OFF"
-ESPBtn.Font = Enum.Font.SourceSans
-ESPBtn.TextSize = 12
-ESPBtn.Parent = MainFrame
-
--- No Fog Button
-local FogBtn = Instance.new("TextButton")
-FogBtn.Size = UDim2.new(1, -20, 0, 32)
-FogBtn.Position = UDim2.new(0, 10, 0, 224)
-FogBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-FogBtn.BorderSizePixel = 0
-FogBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FogBtn.Text = "🌫️  No Fog: OFF"
-FogBtn.Font = Enum.Font.SourceSans
-FogBtn.TextSize = 12
-FogBtn.Parent = MainFrame
-
--- Divider
 local Div2 = Instance.new("Frame")
 Div2.Size = UDim2.new(1, 0, 0, 1)
 Div2.Position = UDim2.new(0, 0, 0, 260)
@@ -354,7 +331,6 @@ Div2.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 Div2.BorderSizePixel = 0
 Div2.Parent = MainFrame
 
--- Terminate Button
 local TermBtn = Instance.new("TextButton")
 TermBtn.Size = UDim2.new(1, -20, 0, 24)
 TermBtn.Position = UDim2.new(0, 10, 0, 266)
@@ -366,14 +342,9 @@ TermBtn.Font = Enum.Font.SourceSansBold
 TermBtn.TextSize = 11
 TermBtn.Parent = MainFrame
 
--- Update MainFrame size
-MainFrame.Size = UDim2.new(0, 240, 0, 298)
-
 -- =============================================
--- FUNCTIONS
+-- BUTTON FUNCTIONS
 -- =============================================
-
--- Minimize
 local function toggleMinimize()
     Minimized = not Minimized
     MainFrame.Visible = not Minimized
@@ -382,239 +353,79 @@ end
 MinBtn.MouseButton1Click:Connect(toggleMinimize)
 DashBtn.MouseButton1Click:Connect(toggleMinimize)
 
--- Speed Toggle
 SpeedBtn.MouseButton1Click:Connect(function()
     SpeedEnabled = not SpeedEnabled
-    if SpeedEnabled then
-        SpeedBtn.Text = "🏃  Movement Speed: ON [" .. WalkSpeed .. "]"
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-    else
-        SpeedBtn.Text = "🏃  Movement Speed: OFF"
-        SpeedBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
-        end
-    end
+    SpeedBtn.Text = SpeedEnabled and "🏃  Speed: ON ["..WalkSpeed.."]" or "🏃  Movement Speed: OFF"
+    SpeedBtn.BackgroundColor3 = SpeedEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
 end)
 
--- Aimbot Toggle
 AimBtn.MouseButton1Click:Connect(function()
     AimbotEnabled = not AimbotEnabled
-    if AimbotEnabled then
-        AimBtn.Text = "🎯  Aimbot: ON"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-        SilentAimEnabled = false
-        SilentBtn.Text = "🤫  Silent Aim: OFF"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    else
-        AimBtn.Text = "🎯  Aimbot: OFF"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    end
+    AimBtn.Text = "🎯  Aimbot: " .. (AimbotEnabled and "ON" or "OFF")
+    AimBtn.BackgroundColor3 = AimbotEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
 end)
 
--- Silent Aim Toggle
 SilentBtn.MouseButton1Click:Connect(function()
     SilentAimEnabled = not SilentAimEnabled
-    if SilentAimEnabled then
-        SilentBtn.Text = "🤫  Silent Aim: ON"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-        AimbotEnabled = false
-        AimBtn.Text = "🎯  Aimbot: OFF"
-        AimBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    else
-        SilentBtn.Text = "🤫  Silent Aim: OFF"
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        SilentTarget = nil
-    end
+    SilentBtn.Text = "🤫  Silent Aim: " .. (SilentAimEnabled and "ON" or "OFF")
+    SilentBtn.BackgroundColor3 = SilentAimEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
 end)
 
--- ESP Toggle
 ESPBtn.MouseButton1Click:Connect(function()
     ESPEnabled = not ESPEnabled
-    if ESPEnabled then
-        ESPBtn.Text = "👁️  Enemy ESP: ON"
-        ESPBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-    else
-        ESPBtn.Text = "👁️  Enemy ESP: OFF"
-        ESPBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        -- Hide all ESP
-        for _, esp in pairs(ESPObjects) do
-            esp.Box.Visible = false
-            esp.Name.Visible = false
-            esp.Distance.Visible = false
-            esp.HealthBar.Visible = false
-            esp.HealthFill.Visible = false
-            esp.HeadDot.Visible = false
-        end
-    end
+    ESPBtn.Text = "👁️  Enemy ESP: " .. (ESPEnabled and "ON" or "OFF")
+    ESPBtn.BackgroundColor3 = ESPEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
 end)
 
--- No Fog Toggle
 FogBtn.MouseButton1Click:Connect(function()
     NoFogEnabled = not NoFogEnabled
+    FogBtn.Text = "🌫️  No Fog: " .. (NoFogEnabled and "ON" or "OFF")
+    FogBtn.BackgroundColor3 = NoFogEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(45, 45, 45)
     if NoFogEnabled then
-        FogBtn.Text = "🌫️  No Fog: ON"
-        FogBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-        pcall(function()
-            Lighting.FogEnd = 99999
-            Lighting.FogStart = 99999
-            Lighting.Brightness = 2
-            local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-            if atmosphere then atmosphere:Destroy() end
-        end)
+        Lighting.FogEnd = 99999
+        Lighting.FogStart = 99999
     else
-        FogBtn.Text = "🌫️  No Fog: OFF"
-        FogBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-        pcall(function()
-            Lighting.FogEnd = 1000
-            Lighting.FogStart = 0
-            Lighting.Brightness = 1
-        end)
-    end
-end)
-
--- Terminate
-TermBtn.MouseButton1Click:Connect(function()
-    ScriptActive = false
-    SilentTarget = nil
-    -- Clean up ESP
-    for player, esp in pairs(ESPObjects) do
-        removeESP(player)
-    end
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
-    end
-    pcall(function()
         Lighting.FogEnd = 1000
         Lighting.FogStart = 0
-        Lighting.Brightness = 1
-    end)
+    end
+end)
+
+TermBtn.MouseButton1Click:Connect(function()
+    ScriptActive = false
+    clearESP()
     ScreenGui:Destroy()
-end)
-
--- =============================================
--- SILENT AIM
--- =============================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
-        pcall(function()
-            local closest = nil
-            local closestDist = 500
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer and player.Character then
-                    local head = player.Character:FindFirstChild("Head")
-                    if head then
-                        local _, onScreen = Camera:WorldToViewportPoint(head.Position)
-                        if onScreen then
-                            local dist = (head.Position - Camera.CFrame.Position).Magnitude
-                            if dist < closestDist then
-                                closestDist = dist
-                                closest = head
-                            end
-                        end
-                    end
-                end
-            end
-            if closest then
-                local oldCFrame = Camera.CFrame
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, closest.Position)
-                SilentTarget = {old = oldCFrame, target = closest}
-            end
-        end)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if SilentAimEnabled and input.UserInputType == Enum.UserInputType.MouseButton1 then
-        if SilentTarget then
-            pcall(function() Camera.CFrame = SilentTarget.old end)
-            SilentTarget = nil
-        end
-    end
 end)
 
 -- =============================================
 -- LOOPS
 -- =============================================
 
--- Speed Loop
+-- Speed
 task.spawn(function()
     while ScriptActive do
-        if SpeedEnabled then
-            pcall(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed
-                end
-            end)
+        if SpeedEnabled and LocalPlayer.Character then
+            pcall(function() LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed end)
         end
         task.wait(0.5)
     end
 end)
 
--- Speed on respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    if SpeedEnabled and char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = WalkSpeed
-    end
-end)
-
--- Aimbot Loop
+-- ESP
 task.spawn(function()
     while ScriptActive do
-        if AimbotEnabled then
-            pcall(function()
-                local target = nil
-                local closestDist = 200
-                for _, player in pairs(Players:GetPlayers()) do
-                    if player ~= LocalPlayer and player.Character then
-                        local head = player.Character:FindFirstChild("Head")
-                        if head then
-                            local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                            if onScreen then
-                                local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                                local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                                if dist < closestDist then
-                                    closestDist = dist
-                                    target = screenPos
-                                end
-                            end
-                        end
-                    end
-                end
-                if target then
-                    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    mousemoverel((target.X - center.X) * 0.3, (target.Y - center.Y) * 0.3)
-                end
-            end)
-        end
+        updateESP()
         task.wait()
     end
 end)
 
--- ESP Update Loop
-task.spawn(function()
-    while ScriptActive do
-        if ESPEnabled then
-            updateESP()
-        end
-        task.wait()
-    end
-end)
-
--- No Fog persistent
+-- No Fog
 task.spawn(function()
     while ScriptActive do
         if NoFogEnabled then
-            pcall(function()
-                Lighting.FogEnd = 99999
-                Lighting.FogStart = 99999
-                local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-                if atmosphere then atmosphere:Destroy() end
-            end)
+            pcall(function() Lighting.FogEnd = 99999 end)
         end
         task.wait(5)
     end
 end)
 
-print("BRM5 PvE Ready! Speed:" .. WalkSpeed .. " | Aimbot | Silent Aim | ESP | No Fog")
+print("BRM5 PvE Ready! ESP + Silent Aim now works on NPCs!")

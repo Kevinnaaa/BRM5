@@ -1,6 +1,6 @@
 --[[
     BRM5 PvE Script - RAYFIELD STYLE
-    Movement Speed + Aimbot + Silent Aim + No Fog
+    Permanent Speed 50 + Aimbot + Silent Aim + No Fog
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Icon
 --]]
 
@@ -13,13 +13,12 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local ScriptActive = true
-local SpeedEnabled = false
 local AimbotEnabled = false
 local SilentAimEnabled = false
 local NoFogEnabled = false
 local Minimized = false
-local WalkSpeed = 50
-local DefaultWalkSpeed = 35
+local PERMANENT_SPEED = 50
+local DEFAULT_SPEED = 35
 local SilentTarget = nil
 
 -- FPS Tracking
@@ -372,6 +371,20 @@ local function CreateButton(parent, title, yPos, callback, accentColor)
     return btn
 end
 
+local function CreateInfoLabel(parent, text, yPos, color)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -30, 0, 18)
+    label.Position = UDim2.new(0, 15, 0, yPos)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    label.Text = text
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 10
+    label.Parent = parent
+    return label
+end
+
 -- =============================================
 -- CREATE TABS
 -- =============================================
@@ -383,85 +396,25 @@ local SettingsPage = CreateTab("Settings", "⚙️", 2)
 -- =============================================
 CreateSection(CombatPage, "AIM ASSIST", 10)
 
-local AimStatus = Instance.new("TextLabel")
-AimStatus.Size = UDim2.new(1, -30, 0, 16)
-AimStatus.Position = UDim2.new(0, 15, 0, 34)
-AimStatus.BackgroundTransparency = 1
-AimStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-AimStatus.Text = "● No target"
-AimStatus.TextXAlignment = Enum.TextXAlignment.Left
-AimStatus.Font = Enum.Font.Gotham
-AimStatus.TextSize = 10
-AimStatus.Parent = CombatPage
-
-CreateToggle(CombatPage, "Aimbot", false, 54, function(state)
+CreateToggle(CombatPage, "Aimbot", false, 34, function(state)
     AimbotEnabled = state
     if state then
         SilentAimEnabled = false
-        -- Update silent toggle visually
-        pcall(function()
-            for _, child in pairs(CombatPage:GetChildren()) do
-                if child:IsA("Frame") and child:FindFirstChild("TextLabel") then
-                    local lbl = child:FindFirstChild("TextLabel")
-                    if lbl and lbl.Text == "Silent Aim" then
-                        local sw = child:FindFirstChild("TextButton")
-                        if sw then
-                            sw.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                            local dot = sw:FindFirstChild("Frame")
-                            if dot then
-                                dot.Position = UDim2.new(0, 2, 0.5, -7)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
     end
-    AimStatus.Text = state and "● Aimbot active" or "● No target"
-    AimStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-CreateToggle(CombatPage, "Silent Aim", false, 88, function(state)
+CreateToggle(CombatPage, "Silent Aim", false, 68, function(state)
     SilentAimEnabled = state
     if state then
         AimbotEnabled = false
-        -- Update aimbot toggle visually
-        pcall(function()
-            for _, child in pairs(CombatPage:GetChildren()) do
-                if child:IsA("Frame") and child:FindFirstChild("TextLabel") then
-                    local lbl = child:FindFirstChild("TextLabel")
-                    if lbl and lbl.Text == "Aimbot" then
-                        local sw = child:FindFirstChild("TextButton")
-                        if sw then
-                            sw.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-                            local dot = sw:FindFirstChild("Frame")
-                            if dot then
-                                dot.Position = UDim2.new(0, 2, 0.5, -7)
-                            end
-                        end
-                    end
-                end
-            end
-        end)
     else
         SilentTarget = nil
     end
-    AimStatus.Text = state and "● Silent Aim active" or "● No target"
-    AimStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-CreateSection(CombatPage, "MOVEMENT", 130)
+CreateSection(CombatPage, "VISUALS", 110)
 
-CreateToggle(CombatPage, "Speed Boost [50]", false, 154, function(state)
-    SpeedEnabled = state
-    if not state and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
-    end
-end)
-
-CreateSection(CombatPage, "VISUALS", 196)
-
-CreateToggle(CombatPage, "No Fog", false, 220, function(state)
+CreateToggle(CombatPage, "No Fog", false, 134, function(state)
     NoFogEnabled = state
     if state then
         pcall(function()
@@ -480,6 +433,11 @@ CreateToggle(CombatPage, "No Fog", false, 220, function(state)
     end
 end)
 
+CreateSection(CombatPage, "PERMANENT STATS", 176)
+
+CreateInfoLabel(CombatPage, "🏃 Speed: 50 (Active)", 200, Color3.fromRGB(100, 255, 100))
+CreateInfoLabel(CombatPage, "Default: 35", 220, Color3.fromRGB(150, 150, 150))
+
 -- =============================================
 -- SETTINGS TAB
 -- =============================================
@@ -496,29 +454,37 @@ SettingsName.Font = Enum.Font.GothamBold
 SettingsName.TextSize = 12
 SettingsName.Parent = SettingsPage
 
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Size = UDim2.new(1, -30, 0, 40)
-InfoLabel.Position = UDim2.new(0, 15, 0, 56)
-InfoLabel.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-InfoLabel.BorderSizePixel = 0
-InfoLabel.TextColor3 = Color3.fromRGB(180, 200, 255)
-InfoLabel.Text = "PvE Only Script\nSpeed: 50 | Default: 35"
-InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-InfoLabel.Font = Enum.Font.Gotham
-InfoLabel.TextSize = 10
-InfoLabel.Parent = SettingsPage
+local InfoBox = Instance.new("Frame")
+InfoBox.Size = UDim2.new(1, -30, 0, 50)
+InfoBox.Position = UDim2.new(0, 15, 0, 60)
+InfoBox.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+InfoBox.BorderSizePixel = 0
+InfoBox.Parent = SettingsPage
 
-local InfoCorner = Instance.new("UICorner")
-InfoCorner.CornerRadius = UDim.new(0, 4)
-InfoCorner.Parent = InfoLabel
+local InfoBoxCorner = Instance.new("UICorner")
+InfoBoxCorner.CornerRadius = UDim.new(0, 4)
+InfoBoxCorner.Parent = InfoBox
 
-CreateSection(SettingsPage, "TERMINATE", 115)
+local InfoText = Instance.new("TextLabel")
+InfoText.Size = UDim2.new(1, -20, 1, -10)
+InfoText.Position = UDim2.new(0, 10, 0, 5)
+InfoText.BackgroundTransparency = 1
+InfoText.TextColor3 = Color3.fromRGB(180, 200, 255)
+InfoText.Text = "PvE Only\nSpeed: 50 (Permanent)\nFPS/Ping/Time: Active"
+InfoText.TextXAlignment = Enum.TextXAlignment.Left
+InfoText.TextYAlignment = Enum.TextYAlignment.Top
+InfoText.Font = Enum.Font.Gotham
+InfoText.TextSize = 10
+InfoText.TextWrapped = true
+InfoText.Parent = InfoBox
 
-CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 139, function()
+CreateSection(SettingsPage, "TERMINATE", 130)
+
+CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 154, function()
     ScriptActive = false
     SilentTarget = nil
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-        LocalPlayer.Character.Humanoid.WalkSpeed = DefaultWalkSpeed
+        LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED
     end
     pcall(function()
         Lighting.FogEnd = 1000
@@ -695,16 +661,14 @@ task.spawn(function()
     end
 end)
 
--- Speed Loop
+-- Permanent Speed (always on)
 task.spawn(function()
     while ScriptActive do
-        if SpeedEnabled then
-            pcall(function()
-                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                    LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed
-                end
-            end)
-        end
+        pcall(function()
+            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                LocalPlayer.Character.Humanoid.WalkSpeed = PERMANENT_SPEED
+            end
+        end)
         task.wait(0.5)
     end
 end)
@@ -712,8 +676,8 @@ end)
 -- Speed on respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
     task.wait(0.5)
-    if SpeedEnabled and char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = WalkSpeed
+    if ScriptActive and char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = PERMANENT_SPEED
     end
 end)
 
@@ -765,4 +729,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ BRM5 PvE Loaded! | Speed:50 | Aimbot | Silent Aim | No Fog | FPS/Ping/Time")
+print("✅ BRM5 PvE Loaded! | Speed:50 Permanent | Aimbot | Silent Aim | No Fog")

@@ -1,6 +1,6 @@
 --[[
-    BRM5 PvE Script - RAYFIELD STYLE (FIXED AIMBOT + SILENT AIM + ESP)
-    Permanent Speed 50 + Aimbot + Silent Aim + No Fog + Enemy ESP
+    BRM5 PvE Script - RAYFIELD STYLE
+    Permanent Speed 50 + Aimbot + Silent Aim + No Fog
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Icon
 --]]
 
@@ -17,15 +17,11 @@ local AimbotEnabled = false
 local SilentAimEnabled = false
 local NoFogEnabled = false
 local Minimized = false
-local ESPEnabled = false
 local SilentTarget = nil
 
--- Speed values
+-- Speed values (no applySpeed function, just set directly)
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 35
-
--- ESP Storage
-local ESPCache = {}
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -46,7 +42,7 @@ end
 getgenv().BRM5Loaded = true
 
 -- =============================================
--- SET SPEED IMMEDIATELY
+-- SET SPEED IMMEDIATELY (no loop, just set it)
 -- =============================================
 pcall(function()
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -54,131 +50,9 @@ pcall(function()
     end
 end)
 
+-- Keep speed on respawn
 LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.2)
-    pcall(function()
-        char:WaitForChild("Humanoid").WalkSpeed = PERMANENT_SPEED
-    end)
-end)
-
--- =============================================
--- ENEMY ESP SYSTEM
--- =============================================
-local function createESP(player)
-    if player == LocalPlayer then return end
-    
-    local espFolder = Instance.new("Folder")
-    espFolder.Name = player.Name
-    
-    -- Box
-    local box = Drawing.new("Square")
-    box.Visible = false
-    box.Color = Color3.fromRGB(255, 50, 50)
-    box.Thickness = 2
-    box.Filled = false
-    box.Transparency = 1
-    
-    -- Distance Text
-    local distText = Drawing.new("Text")
-    distText.Visible = false
-    distText.Color = Color3.fromRGB(255, 255, 255)
-    distText.Size = 14
-    distText.Center = true
-    distText.Outline = true
-    distText.OutlineColor = Color3.fromRGB(0, 0, 0)
-    
-    ESPCache[player] = {
-        folder = espFolder,
-        box = box,
-        distText = distText
-    }
-end
-
-local function removeESP(player)
-    if ESPCache[player] then
-        ESPCache[player].box:Remove()
-        ESPCache[player].distText:Remove()
-        ESPCache[player] = nil
-    end
-end
-
-local function updateESP()
-    for player, esp in pairs(ESPCache) do
-        pcall(function()
-            if player and player.Character and player.Character:FindFirstChild("Humanoid") 
-            and player.Character.Humanoid.Health > 0 
-            and player.Character:FindFirstChild("Head") 
-            and player.Character:FindFirstChild("HumanoidRootPart") then
-                
-                local head = player.Character.Head
-                local root = player.Character.HumanoidRootPart
-                local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-                
-                if onScreen then
-                    local headPos = Camera:WorldToViewportPoint(head.Position)
-                    local scale = 1000 / (Camera.CFrame.Position - root.Position).Magnitude
-                    local boxSize = Vector2.new(2 * scale, 3 * scale)
-                    
-                    -- Box
-                    esp.box.Visible = ESPEnabled
-                    esp.box.Position = Vector2.new(screenPos.X - boxSize.X/2, screenPos.Y - boxSize.Y)
-                    esp.box.Size = boxSize
-                    
-                    -- Distance
-                    local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-                    esp.distText.Visible = ESPEnabled
-                    esp.distText.Position = Vector2.new(screenPos.X, screenPos.Y - boxSize.Y - 15)
-                    esp.distText.Text = player.Name .. " [" .. dist .. "m]"
-                    
-                    -- Color based on distance
-                    if dist < 50 then
-                        esp.box.Color = Color3.fromRGB(255, 50, 50)
-                    elseif dist < 150 then
-                        esp.box.Color = Color3.fromRGB(255, 200, 0)
-                    else
-                        esp.box.Color = Color3.fromRGB(100, 255, 100)
-                    end
-                else
-                    esp.box.Visible = false
-                    esp.distText.Visible = false
-                end
-            else
-                esp.box.Visible = false
-                esp.distText.Visible = false
-            end
-        end)
-    end
-end
-
--- Player tracking
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then
-        createESP(player)
-    end
-end
-
-Players.PlayerAdded:Connect(function(player)
-    task.wait(1)
-    createESP(player)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-    removeESP(player)
-end)
-
--- ESP Render Loop
-task.spawn(function()
-    while ScriptActive do
-        if ESPEnabled then
-            updateESP()
-        else
-            for _, esp in pairs(ESPCache) do
-                esp.box.Visible = false
-                esp.distText.Visible = false
-            end
-        end
-        task.wait()
-    end
+    char:WaitForChild("Humanoid").WalkSpeed = PERMANENT_SPEED
 end)
 
 -- =============================================
@@ -190,10 +64,11 @@ GUI.ResetOnSpawn = false
 GUI.Parent = game.CoreGui
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
+-- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
-Main.Size = UDim2.new(0, 500, 0, 340)
-Main.Position = UDim2.new(0.5, -250, 0.5, -170)
+Main.Size = UDim2.new(0, 500, 0, 300)
+Main.Position = UDim2.new(0.5, -250, 0.5, -150)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -229,6 +104,7 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 
+-- FPS
 local FPSDisplay = Instance.new("TextLabel")
 FPSDisplay.Size = UDim2.new(0, 50, 1, 0)
 FPSDisplay.Position = UDim2.new(0, 10, 0, 0)
@@ -240,6 +116,7 @@ FPSDisplay.Font = Enum.Font.GothamBold
 FPSDisplay.TextSize = 10
 FPSDisplay.Parent = TitleBar
 
+-- Ping
 local PingDisplay = Instance.new("TextLabel")
 PingDisplay.Size = UDim2.new(0, 65, 1, 0)
 PingDisplay.Position = UDim2.new(0, 62, 0, 0)
@@ -251,6 +128,7 @@ PingDisplay.Font = Enum.Font.GothamBold
 PingDisplay.TextSize = 10
 PingDisplay.Parent = TitleBar
 
+-- Time
 local TimerDisplay = Instance.new("TextLabel")
 TimerDisplay.Size = UDim2.new(0, 70, 1, 0)
 TimerDisplay.Position = UDim2.new(0, 130, 0, 0)
@@ -262,6 +140,7 @@ TimerDisplay.Font = Enum.Font.GothamBold
 TimerDisplay.TextSize = 10
 TimerDisplay.Parent = TitleBar
 
+-- Title
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -290, 1, 0)
 TitleText.Position = UDim2.new(0, 205, 0, 0)
@@ -273,6 +152,7 @@ TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 11
 TitleText.Parent = TitleBar
 
+-- Minimize Button
 local MinBtn = Instance.new("TextButton")
 MinBtn.Size = UDim2.new(0, 28, 0, 28)
 MinBtn.Position = UDim2.new(1, -33, 0, 2)
@@ -289,12 +169,14 @@ local MinCorner = Instance.new("UICorner")
 MinCorner.CornerRadius = UDim.new(0, 4)
 MinCorner.Parent = MinBtn
 
+-- Content Container
 local ContentContainer = Instance.new("Frame")
 ContentContainer.Size = UDim2.new(1, 0, 1, -32)
 ContentContainer.Position = UDim2.new(0, 0, 0, 32)
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Parent = Main
 
+-- Sidebar
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 140, 1, 0)
 Sidebar.Position = UDim2.new(0, 0, 0, 0)
@@ -309,6 +191,7 @@ SidebarBorder.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 SidebarBorder.BorderSizePixel = 0
 SidebarBorder.Parent = Sidebar
 
+-- Sidebar Logo
 local SidebarLogo = Instance.new("Frame")
 SidebarLogo.Size = UDim2.new(1, 0, 0, 45)
 SidebarLogo.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -522,8 +405,7 @@ end
 -- CREATE TABS
 -- =============================================
 local CombatPage = CreateTab("Combat", "🎯", 1)
-local VisualsPage = CreateTab("Visuals", "👁", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
+local SettingsPage = CreateTab("Settings", "⚙️", 2)
 
 -- =============================================
 -- COMBAT TAB
@@ -563,19 +445,6 @@ CreateInfoLabel(CombatPage, "🏃 Speed: 50 (Active)", 200, Color3.fromRGB(100, 
 CreateInfoLabel(CombatPage, "Default: 35", 220, Color3.fromRGB(150, 150, 150))
 
 -- =============================================
--- VISUALS TAB
--- =============================================
-CreateSection(VisualsPage, "ESP", 10)
-
-CreateToggle(VisualsPage, "Enemy ESP", false, 34, function(state)
-    ESPEnabled = state
-end)
-
-CreateSection(VisualsPage, "INFO", 76)
-
-CreateInfoLabel(VisualsPage, "Box + Name + Distance", 100, Color3.fromRGB(200, 200, 200))
-
--- =============================================
 -- SETTINGS TAB
 -- =============================================
 CreateSection(SettingsPage, "INFO", 10)
@@ -607,7 +476,7 @@ InfoText.Size = UDim2.new(1, -20, 1, -10)
 InfoText.Position = UDim2.new(0, 10, 0, 5)
 InfoText.BackgroundTransparency = 1
 InfoText.TextColor3 = Color3.fromRGB(180, 200, 255)
-InfoText.Text = "PvE Only\nSpeed: 50 (Permanent)\nFPS/Ping/Time: Active\nESP: Box + Distance"
+InfoText.Text = "PvE Only\nSpeed: 50 (Permanent)\nFPS/Ping/Time: Active"
 InfoText.TextXAlignment = Enum.TextXAlignment.Left
 InfoText.TextYAlignment = Enum.TextYAlignment.Top
 InfoText.Font = Enum.Font.Gotham
@@ -620,12 +489,6 @@ CreateSection(SettingsPage, "TERMINATE", 130)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 154, function()
     ScriptActive = false
     SilentTarget = nil
-    -- Clean up ESP
-    for _, esp in pairs(ESPCache) do
-        esp.box:Remove()
-        esp.distText:Remove()
-    end
-    ESPCache = {}
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
         LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED
     end
@@ -667,6 +530,7 @@ UserInputService.InputChanged:Connect(function(i)
     end
 end)
 
+-- Main window draggable
 local dragActive, dragInput, dragStart, startPos = false, nil, nil, nil
 TitleBar.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -685,87 +549,38 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =============================================
--- IMPROVED SILENT AIM (Snaps camera + auto-shoots)
+-- SILENT AIM
 -- =============================================
-local SilentAimConnection
-SilentAimConnection = RunService.RenderStepped:Connect(function()
-    if SilentAimEnabled then
+UserInputService.InputBegan:Connect(function(i, gp)
+    if SilentAimEnabled and i.UserInputType == Enum.UserInputType.MouseButton1 then
         pcall(function()
-            local closest, closestDist = nil, math.huge
+            local closest, closestDist = nil, 500
             for _, p in pairs(Players:GetPlayers()) do
-                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                    local head = p.Character.Head
-                    local _, onScreen = Camera:WorldToViewportPoint(head.Position)
-                    if onScreen then
-                        local screenPos = Camera:WorldToViewportPoint(head.Position)
-                        local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                        if dist < 200 and dist < closestDist then
-                            closestDist = dist
-                            closest = {player = p, head = head, screenPos = screenPos}
+                if p ~= LocalPlayer and p.Character then
+                    local h = p.Character:FindFirstChild("Head")
+                    if h then
+                        local _, os = Camera:WorldToViewportPoint(h.Position)
+                        if os then
+                            local dist = (h.Position - Camera.CFrame.Position).Magnitude
+                            if dist < closestDist then closestDist = dist; closest = h end
                         end
                     end
                 end
             end
             if closest then
-                SilentTarget = closest
-            else
-                SilentTarget = nil
+                local old = Camera.CFrame
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, closest.Position)
+                SilentTarget = {old = old, target = closest}
             end
         end)
-    else
-        SilentTarget = nil
     end
 end)
-
--- Auto-shoot with Silent Aim
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if SilentAimEnabled and not gameProcessed and input.UserInputType == Enum.UserInputType.MouseButton2 then
+UserInputService.InputEnded:Connect(function(i)
+    if SilentAimEnabled and i.UserInputType == Enum.UserInputType.MouseButton1 then
         if SilentTarget then
-            pcall(function()
-                local oldCFrame = Camera.CFrame
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, SilentTarget.head.Position)
-                -- Auto shoot
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                Camera.CFrame = oldCFrame
-            end)
+            pcall(function() Camera.CFrame = SilentTarget.old end)
+            SilentTarget = nil
         end
-    end
-end)
-
--- =============================================
--- IMPROVED AIMBOT (Smoother, works better)
--- =============================================
-task.spawn(function()
-    while ScriptActive do
-        if AimbotEnabled then
-            pcall(function()
-                local closest, closestDist = nil, 300
-                for _, p in pairs(Players:GetPlayers()) do
-                    if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
-                        local head = p.Character.Head
-                        local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                        if onScreen then
-                            local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                            local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-                            if dist < closestDist then
-                                closestDist = dist
-                                closest = screenPos
-                            end
-                        end
-                    end
-                end
-                if closest then
-                    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-                    local moveX = (closest.X - center.X) * 0.5
-                    local moveY = (closest.Y - center.Y) * 0.5
-                    mousemoverel(moveX, moveY)
-                end
-            end)
-        end
-        task.wait()
     end
 end)
 
@@ -773,6 +588,7 @@ end)
 -- UPDATE LOOPS
 -- =============================================
 
+-- FPS
 task.spawn(function()
     while ScriptActive do
         fpsCount += 1
@@ -786,6 +602,7 @@ task.spawn(function()
     end
 end)
 
+-- Ping
 task.spawn(function()
     while ScriptActive do
         pcall(function()
@@ -797,6 +614,7 @@ task.spawn(function()
     end
 end)
 
+-- Timer
 task.spawn(function()
     while ScriptActive do
         saniye += 1
@@ -807,6 +625,36 @@ task.spawn(function()
     end
 end)
 
+-- Aimbot Loop
+task.spawn(function()
+    while ScriptActive do
+        if AimbotEnabled then
+            pcall(function()
+                local target, closestDist = nil, 200
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LocalPlayer and p.Character then
+                        local h = p.Character:FindFirstChild("Head")
+                        if h then
+                            local sp, os = Camera:WorldToViewportPoint(h.Position)
+                            if os then
+                                local c = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                                local d = (Vector2.new(sp.X, sp.Y) - c).Magnitude
+                                if d < closestDist then closestDist = d; target = sp end
+                            end
+                        end
+                    end
+                end
+                if target then
+                    local c = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+                    mousemoverel((target.X - c.X) * 0.3, (target.Y - c.Y) * 0.3)
+                end
+            end)
+        end
+        task.wait()
+    end
+end)
+
+-- No Fog persistent
 task.spawn(function()
     while ScriptActive do
         if NoFogEnabled then
@@ -820,4 +668,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ BRM5 PvE Loaded! | Speed:50 | Aimbot | Silent Aim | ESP | No Fog")
+print("✅ BRM5 PvE Loaded! | Speed:50 Permanent | Aimbot | Silent Aim | No Fog")

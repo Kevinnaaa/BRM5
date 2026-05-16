@@ -1,5 +1,5 @@
 --[[
-    BRM5 PvE Script - RAYFIELD STYLE
+    BRM5 PvE Script - RAYFIELD STYLE (PC ONLY - FIXED SPEED)
     Permanent Speed 50 + Aimbot + Silent Aim + No Fog
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Icon
 --]]
@@ -535,7 +535,7 @@ MinimizeIcon.InputEnded:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+    if iconDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - iconDragStart
         MinimizeIcon.Position = UDim2.new(iconStartPos.X.Scale, iconStartPos.X.Offset + delta.X, iconStartPos.Y.Scale, iconStartPos.Y.Offset + delta.Y)
     end
@@ -548,7 +548,7 @@ local dragStart
 local startPos
 
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragActive = true
         dragStart = input.Position
         startPos = Main.Position
@@ -562,7 +562,7 @@ TitleBar.InputBegan:Connect(function(input)
 end)
 
 TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
         dragInput = input
     end
 end)
@@ -661,23 +661,38 @@ task.spawn(function()
     end
 end)
 
--- Permanent Speed (always on)
-task.spawn(function()
-    while ScriptActive do
-        pcall(function()
-            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-                LocalPlayer.Character.Humanoid.WalkSpeed = PERMANENT_SPEED
+-- Permanent Speed (FIXED - applies immediately and persists)
+local function applySpeed()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.WalkSpeed = PERMANENT_SPEED
             end
-        end)
-        task.wait(0.5)
+        end
+    end)
+end
+
+-- Apply speed now
+applySpeed()
+
+-- Apply speed on respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    if ScriptActive and char then
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = PERMANENT_SPEED
+        end
     end
 end)
 
--- Speed on respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    if ScriptActive and char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = PERMANENT_SPEED
+-- Apply speed continuously (safety loop)
+task.spawn(function()
+    while ScriptActive do
+        applySpeed()
+        task.wait(0.5)
     end
 end)
 

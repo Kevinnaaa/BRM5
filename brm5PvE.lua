@@ -1,5 +1,5 @@
 --[[
-    BRM5 PvE Script - RAYFIELD STYLE (PC ONLY - FIXED SPEED)
+    BRM5 PvE Script - RAYFIELD STYLE
     Permanent Speed 50 + Aimbot + Silent Aim + No Fog
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Icon
 --]]
@@ -38,6 +38,59 @@ if getgenv().BRM5Loaded then
     end
 end
 getgenv().BRM5Loaded = true
+
+-- =============================================
+-- PERMANENT SPEED (extracted from original script)
+-- =============================================
+local function applySpeed()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.WalkSpeed = PERMANENT_SPEED
+            end
+        end
+    end)
+end
+
+-- Apply speed immediately
+applySpeed()
+
+-- Apply speed on respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    if ScriptActive and char then
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            hum.WalkSpeed = PERMANENT_SPEED
+        end
+    end
+end)
+
+-- Apply speed continuously (safety loop, like the original script)
+task.spawn(function()
+    while ScriptActive do
+        applySpeed()
+        task.wait(0.3)
+    end
+end)
+
+-- Also hook into the humanoid directly for immediate speed changes
+task.spawn(function()
+    while ScriptActive do
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum and hum.WalkSpeed ~= PERMANENT_SPEED then
+                    hum.WalkSpeed = PERMANENT_SPEED
+                end
+            end
+        end)
+        task.wait(0.1)
+    end
+end)
 
 -- =============================================
 -- GUI CREATION
@@ -398,18 +451,12 @@ CreateSection(CombatPage, "AIM ASSIST", 10)
 
 CreateToggle(CombatPage, "Aimbot", false, 34, function(state)
     AimbotEnabled = state
-    if state then
-        SilentAimEnabled = false
-    end
+    if state then SilentAimEnabled = false end
 end)
 
 CreateToggle(CombatPage, "Silent Aim", false, 68, function(state)
     SilentAimEnabled = state
-    if state then
-        AimbotEnabled = false
-    else
-        SilentTarget = nil
-    end
+    if state then AimbotEnabled = false else SilentTarget = nil end
 end)
 
 CreateSection(CombatPage, "VISUALS", 110)
@@ -658,41 +705,6 @@ task.spawn(function()
         if dakika >= 60 then dakika = 0; saat = saat + 1 end
         TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
         task.wait(1)
-    end
-end)
-
--- Permanent Speed (FIXED - applies immediately and persists)
-local function applySpeed()
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then
-                hum.WalkSpeed = PERMANENT_SPEED
-            end
-        end
-    end)
-end
-
--- Apply speed now
-applySpeed()
-
--- Apply speed on respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.1)
-    if ScriptActive and char then
-        local hum = char:FindFirstChild("Humanoid")
-        if hum then
-            hum.WalkSpeed = PERMANENT_SPEED
-        end
-    end
-end)
-
--- Apply speed continuously (safety loop)
-task.spawn(function()
-    while ScriptActive do
-        applySpeed()
-        task.wait(0.5)
     end
 end)
 

@@ -1,7 +1,7 @@
 --[[
-    BRM5 PvE Script - RAYFIELD STYLE (FIXED SPEED + AIMBOT + SILENT AIM + ESP)
-    Permanent Speed 50 + Aimbot + Silent Aim + No Fog + Enemy ESP
-    Open World PvE Only | FPS/Ping/Time Display | Minimize to Icon
+    BRM5 PvE v1 - RAYFIELD STYLE (HIGHLIGHT ESP + AIMBOT + SILENT AIM)
+    Permanent Speed 50 + Aimbot + Silent Aim + No Fog + Enemy Highlights
+    Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
 --]]
 
 local Players = game:GetService("Players")
@@ -12,6 +12,7 @@ local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local Workspace = game:GetService("Workspace")
 
 local ScriptActive = true
 local AimbotEnabled = false
@@ -24,7 +25,6 @@ local SpeedBoostEnabled = true
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 35
-local ESPCache = {}
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 
@@ -32,10 +32,12 @@ local saniye, dakika, saat = 0, 0, 0
 if getgenv().BRM5Loaded then
     getgenv().BRM5Loaded = false
     if game.CoreGui:FindFirstChild("BRM5GUI") then game.CoreGui.BRM5GUI:Destroy() end
-    if game.CoreGui:FindFirstChild("BRM5Icon") then game.CoreGui.BRM5Icon:Destroy() end
-    for _, esp in pairs(ESPCache) do
-        pcall(function() esp.box:Remove() end)
-        pcall(function() esp.distText:Remove() end)
+    if game.CoreGui:FindFirstChild("BRM5MinText") then game.CoreGui.BRM5MinText:Destroy() end
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") then
+            local hl = obj:FindFirstChildOfClass("Highlight")
+            if hl then hl:Destroy() end
+        end
     end
 end
 getgenv().BRM5Loaded = true
@@ -74,58 +76,98 @@ task.spawn(function()
 end)
 
 -- =============================================
--- ESP
+-- HIGHLIGHT ESP
 -- =============================================
-local function createESP(player)
+local function addHighlight(player)
     if player == LocalPlayer then return end
-    local box = Drawing.new("Square")
-    box.Visible = false; box.Color = Color3.fromRGB(255, 50, 50)
-    box.Thickness = 2; box.Filled = false; box.Transparency = 1
-    local distText = Drawing.new("Text")
-    distText.Visible = false; distText.Color = Color3.fromRGB(255, 255, 255)
-    distText.Size = 14; distText.Center = true; distText.Outline = true
-    distText.OutlineColor = Color3.fromRGB(0, 0, 0)
-    ESPCache[player] = {box = box, distText = distText}
+    pcall(function()
+        if player.Character then
+            local oldHL = player.Character:FindFirstChildOfClass("Highlight")
+            if oldHL then oldHL:Destroy() end
+            
+            local highlight = Instance.new("Highlight")
+            highlight.Name = "ESP_Highlight"
+            highlight.Adornee = player.Character
+            highlight.Parent = player.Character
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.FillTransparency = 0.85
+            highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+            highlight.OutlineTransparency = 0.3
+            highlight.Enabled = ESPEnabled
+        end
+    end)
 end
-local function removeESP(player)
-    if ESPCache[player] then
-        pcall(function() ESPCache[player].box:Remove() end)
-        pcall(function() ESPCache[player].distText:Remove() end)
-        ESPCache[player] = nil
+
+local function removeHighlight(player)
+    pcall(function()
+        if player and player.Character then
+            local hl = player.Character:FindFirstChildOfClass("Highlight")
+            if hl then hl:Destroy() end
+        end
+    end)
+end
+
+local function updateAllHighlights()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            pcall(function()
+                if player.Character then
+                    local hl = player.Character:FindFirstChildOfClass("Highlight")
+                    if hl then
+                        hl.Enabled = ESPEnabled
+                        local char = LocalPlayer.Character
+                        if char and char:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = (char.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
+                            if dist < 50 then
+                                hl.FillColor = Color3.fromRGB(255, 0, 0)
+                                hl.OutlineColor = Color3.fromRGB(255, 50, 50)
+                            elseif dist < 150 then
+                                hl.FillColor = Color3.fromRGB(255, 200, 0)
+                                hl.OutlineColor = Color3.fromRGB(255, 180, 0)
+                            else
+                                hl.FillColor = Color3.fromRGB(0, 255, 0)
+                                hl.OutlineColor = Color3.fromRGB(50, 255, 50)
+                            end
+                        end
+                    end
+                else
+                    removeHighlight(player)
+                end
+            end)
+        end
     end
 end
-local function updateESP()
-    for player, esp in pairs(ESPCache) do
-        pcall(function()
-            if player and player.Character and player.Character:FindFirstChild("Humanoid") 
-            and player.Character.Humanoid.Health > 0 and player.Character:FindFirstChild("Head") 
-            and player.Character:FindFirstChild("HumanoidRootPart") then
-                local root = player.Character.HumanoidRootPart
-                local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
-                if onScreen then
-                    local scale = 1000 / (Camera.CFrame.Position - root.Position).Magnitude
-                    local boxSize = Vector2.new(2 * scale, 3 * scale)
-                    esp.box.Visible = ESPEnabled
-                    esp.box.Position = Vector2.new(screenPos.X - boxSize.X/2, screenPos.Y - boxSize.Y)
-                    esp.box.Size = boxSize
-                    local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-                    esp.distText.Visible = ESPEnabled
-                    esp.distText.Position = Vector2.new(screenPos.X, screenPos.Y - boxSize.Y - 15)
-                    esp.distText.Text = player.Name .. " [" .. dist .. "m]"
-                    if dist < 50 then esp.box.Color = Color3.fromRGB(255, 50, 50)
-                    elseif dist < 150 then esp.box.Color = Color3.fromRGB(255, 200, 0)
-                    else esp.box.Color = Color3.fromRGB(100, 255, 100) end
-                else esp.box.Visible = false; esp.distText.Visible = false end
-            else esp.box.Visible = false; esp.distText.Visible = false end
-        end)
-    end
-end
+
 for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then createESP(player) end
+    if player ~= LocalPlayer then addHighlight(player) end
 end
-Players.PlayerAdded:Connect(function(p) task.wait(1); createESP(p) end)
-Players.PlayerRemoving:Connect(removeESP)
-task.spawn(function() while ScriptActive do if ESPEnabled then updateESP() end task.wait() end end)
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1); addHighlight(player); updateAllHighlights()
+end)
+Players.PlayerRemoving:Connect(removeHighlight)
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5); addHighlight(player); updateAllHighlights()
+    end)
+end)
+task.spawn(function()
+    while ScriptActive do
+        if ESPEnabled then updateAllHighlights()
+        else
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    pcall(function()
+                        if player.Character then
+                            local hl = player.Character:FindFirstChildOfClass("Highlight")
+                            if hl then hl.Enabled = false end
+                        end
+                    end)
+                end
+            end
+        end
+        task.wait(0.5)
+    end
+end)
 
 -- =============================================
 -- GUI
@@ -138,13 +180,21 @@ Main.Size = UDim2.new(0, 500, 0, 300); Main.Position = UDim2.new(0.5, -250, 0.5,
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Main.BorderSizePixel = 0; Main.ClipsDescendants = true; Main.Parent = GUI
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
 
--- Minimize Icon
-local MinimizeIcon = Instance.new("TextButton")
-MinimizeIcon.Size = UDim2.new(0, 45, 0, 45); MinimizeIcon.Position = UDim2.new(0, 10, 0, 80)
-MinimizeIcon.BackgroundColor3 = Color3.fromRGB(25, 25, 25); MinimizeIcon.TextColor3 = Color3.fromRGB(180, 200, 255)
-MinimizeIcon.Text = "🔫"; MinimizeIcon.Font = Enum.Font.GothamBold; MinimizeIcon.TextSize = 20
-MinimizeIcon.AutoButtonColor = false; MinimizeIcon.Visible = false; MinimizeIcon.Parent = GUI
-Instance.new("UICorner", MinimizeIcon).CornerRadius = UDim.new(0, 8)
+-- Minimize Text Button (BRM5 PvE v1)
+local MinimizeText = Instance.new("TextButton")
+MinimizeText.Name = "BRM5MinText"
+MinimizeText.Size = UDim2.new(0, 120, 0, 32)
+MinimizeText.Position = UDim2.new(0, 10, 0, 10)
+MinimizeText.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinimizeText.BorderSizePixel = 0
+MinimizeText.TextColor3 = Color3.fromRGB(180, 200, 255)
+MinimizeText.Text = "BRM5 PvE v1"
+MinimizeText.Font = Enum.Font.GothamBold
+MinimizeText.TextSize = 14
+MinimizeText.AutoButtonColor = false
+MinimizeText.Visible = false
+MinimizeText.Parent = GUI
+Instance.new("UICorner", MinimizeText).CornerRadius = UDim.new(0, 6)
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -183,7 +233,6 @@ ContentContainer.BackgroundTransparency = 1; ContentContainer.Parent = Main
 
 local Sidebar = Instance.new("Frame")
 Sidebar.Size = UDim2.new(0, 140, 1, 0); Sidebar.BackgroundColor3 = Color3.fromRGB(23, 23, 23); Sidebar.Parent = ContentContainer
-Instance.new("Frame", Sidebar).Size = UDim2.new(0, 1, 1, 0); -- (border simplified)
 
 local SidebarLogo = Instance.new("Frame")
 SidebarLogo.Size = UDim2.new(1, 0, 0, 45); SidebarLogo.BackgroundColor3 = Color3.fromRGB(30, 30, 30); SidebarLogo.Parent = Sidebar
@@ -191,7 +240,7 @@ SidebarLogo.Size = UDim2.new(1, 0, 0, 45); SidebarLogo.BackgroundColor3 = Color3
 local LogoText = Instance.new("TextLabel")
 LogoText.Size = UDim2.new(1, -20, 0, 20); LogoText.Position = UDim2.new(0, 10, 0, 5)
 LogoText.BackgroundTransparency = 1; LogoText.TextColor3 = Color3.fromRGB(180, 200, 255)
-LogoText.Text = "🔫 BRM5 PvE"; LogoText.Font = Enum.Font.GothamBold; LogoText.TextSize = 10; LogoText.Parent = SidebarLogo
+LogoText.Text = "BRM5 PvE v1"; LogoText.Font = Enum.Font.GothamBold; LogoText.TextSize = 10; LogoText.Parent = SidebarLogo
 
 local LogoSub = Instance.new("TextLabel")
 LogoSub.Size = UDim2.new(1, -20, 0, 14); LogoSub.Position = UDim2.new(0, 10, 0, 24)
@@ -300,17 +349,13 @@ CreateInfoLabel(CombatPage, "🏃 Speed: 50 (Always On)", 134, Color3.fromRGB(10
 CreateInfoLabel(CombatPage, "Default: 35", 154, Color3.fromRGB(150,150,150))
 
 -- Visuals Tab
-CreateSection(VisualsPage, "ESP", 10)
-CreateToggle(VisualsPage, "Enemy ESP", false, 34, function(s) ESPEnabled = s end)
+CreateSection(VisualsPage, "HIGHLIGHTS", 10)
+CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s) ESPEnabled = s; updateAllHighlights() end)
 CreateSection(VisualsPage, "ENVIRONMENT", 76)
 CreateToggle(VisualsPage, "No Fog", false, 100, function(s)
     NoFogEnabled = s
-    if s then
-        pcall(function() Lighting.FogEnd = 99999; Lighting.FogStart = 99999; Lighting.Brightness = 2
-            local at = Lighting:FindFirstChildOfClass("Atmosphere"); if at then at:Destroy() end end)
-    else
-        pcall(function() Lighting.FogEnd = 1000; Lighting.FogStart = 0; Lighting.Brightness = 1 end)
-    end
+    if s then pcall(function() Lighting.FogEnd = 99999; Lighting.FogStart = 99999; Lighting.Brightness = 2; local at = Lighting:FindFirstChildOfClass("Atmosphere"); if at then at:Destroy() end end)
+    else pcall(function() Lighting.FogEnd = 1000; Lighting.FogStart = 0; Lighting.Brightness = 1 end) end
 end)
 
 -- Settings Tab
@@ -318,27 +363,28 @@ CreateSection(SettingsPage, "INFO", 10)
 local SettingsName = Instance.new("TextLabel")
 SettingsName.Size = UDim2.new(1, -30, 0, 20); SettingsName.Position = UDim2.new(0, 15, 0, 34)
 SettingsName.BackgroundTransparency = 1; SettingsName.TextColor3 = Color3.fromRGB(255,255,255)
-SettingsName.Text = "🔫 " .. LocalPlayer.Name; SettingsName.Font = Enum.Font.GothamBold; SettingsName.TextSize = 12; SettingsName.Parent = SettingsPage
+SettingsName.Text = "🎯 " .. LocalPlayer.Name; SettingsName.Font = Enum.Font.GothamBold; SettingsName.TextSize = 12; SettingsName.Parent = SettingsPage
 CreateSection(SettingsPage, "TERMINATE", 66)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 90, function()
     ScriptActive = false; SpeedBoostEnabled = false; SilentTarget = nil
-    for _, esp in pairs(ESPCache) do pcall(function() esp.box:Remove() end); pcall(function() esp.distText:Remove() end) end
-    ESPCache = {}
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") then local hl = obj:FindFirstChildOfClass("Highlight"); if hl then hl:Destroy() end end
+    end
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED end
     pcall(function() Lighting.FogEnd = 1000; Lighting.FogStart = 0; Lighting.Brightness = 1 end)
     GUI:Destroy()
 end, Color3.fromRGB(100, 20, 20))
 
--- Minimize
-local function showMain() Main.Visible = true; MinimizeIcon.Visible = false; Minimized = false end
-local function showIcon() Main.Visible = false; MinimizeIcon.Visible = true; Minimized = true end
-MinBtn.MouseButton1Click:Connect(showIcon); MinimizeIcon.MouseButton1Click:Connect(showMain)
+-- Minimize (Text button instead of icon)
+local function showMain() Main.Visible = true; MinimizeText.Visible = false; Minimized = false end
+local function showText() Main.Visible = false; MinimizeText.Visible = true; Minimized = true end
+MinBtn.MouseButton1Click:Connect(showText); MinimizeText.MouseButton1Click:Connect(showMain)
 
 local idragging, idragStart, istartPos = false, nil, nil
-MinimizeIcon.InputBegan:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseButton1 then idragging = true; idragStart = i.Position; istartPos = MinimizeIcon.Position end
+MinimizeText.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then idragging = true; idragStart = i.Position; istartPos = MinimizeText.Position end
 end)
-MinimizeIcon.InputEnded:Connect(function(i)
+MinimizeText.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
         if idragging and (i.Position - idragStart).Magnitude < 5 then showMain() end; idragging = false
     end
@@ -346,7 +392,7 @@ end)
 UserInputService.InputChanged:Connect(function(i)
     if idragging and i.UserInputType == Enum.UserInputType.MouseMovement then
         local d = i.Position - idragStart
-        MinimizeIcon.Position = UDim2.new(istartPos.X.Scale, istartPos.X.Offset + d.X, istartPos.Y.Scale, istartPos.Y.Offset + d.Y)
+        MinimizeText.Position = UDim2.new(istartPos.X.Scale, istartPos.X.Offset + d.X, istartPos.Y.Scale, istartPos.Y.Offset + d.Y)
     end
 end)
 
@@ -452,4 +498,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ BRM5 PvE Loaded! | Speed:50 | Aimbot | Silent Aim | ESP | No Fog")
+print("✅ BRM5 PvE v1 Loaded! | Speed:50 | Aimbot | Silent Aim | Highlights | No Fog")

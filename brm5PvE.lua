@@ -1,5 +1,5 @@
 --[[
-    BRM5 PvE v1 - CLEAN VERSION
+    BRM5 PvE v1 - FIXED SPEED VERSION
     Permanent Speed 50 + No Fog + Enemy Highlights
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
 --]]
@@ -20,7 +20,7 @@ local ESPEnabled = false
 local SpeedBoostEnabled = true
 
 local PERMANENT_SPEED = 50
-local DEFAULT_SPEED = 16  -- Default Roblox walkspeed
+local DEFAULT_SPEED = 16
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 
@@ -39,47 +39,32 @@ end
 getgenv().BRM5Loaded = true
 
 -- =============================================
--- SPEED (FIXED)
+-- SPEED (FIXED - Same as working Blox Fruits)
 -- =============================================
-local function setSpeed()
+local function applySpeed()
     pcall(function()
         local char = LocalPlayer.Character
-        if char then
-            local hum = char:FindFirstChild("Humanoid")
-            if hum then 
-                hum.WalkSpeed = PERMANENT_SPEED 
-            end
+        if char and char:FindFirstChild("Humanoid") then
+            local humanoid = char.Humanoid
+            humanoid.WalkSpeed = PERMANENT_SPEED
         end
     end)
 end
 
--- Apply speed on load
-setSpeed()
+-- Apply speed immediately
+applySpeed()
 
 -- Apply speed on respawn
-LocalPlayer.CharacterAdded:Connect(function(char)
+LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
-    local hum = char:WaitForChild("Humanoid", 5)
-    if hum and SpeedBoostEnabled then
-        hum.WalkSpeed = PERMANENT_SPEED
-    end
+    applySpeed()
 end)
 
--- Keep speed applied
+-- Keep speed applied (fast loop like Blox Fruits)
 task.spawn(function()
     while ScriptActive do
-        if SpeedBoostEnabled then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char then
-                    local hum = char:FindFirstChild("Humanoid")
-                    if hum and hum.WalkSpeed ~= PERMANENT_SPEED then
-                        hum.WalkSpeed = PERMANENT_SPEED
-                    end
-                end
-            end)
-        end
-        task.wait(0.5)
+        applySpeed()
+        task.wait(0.3) -- Same interval as working script
     end
 end)
 
@@ -146,7 +131,6 @@ local function updateAllHighlights()
     end
 end
 
--- Initialize highlights for existing players
 for _, player in pairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then addHighlight(player) end
 end
@@ -512,7 +496,6 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
     ScriptActive = false
     SpeedBoostEnabled = false
     
-    -- Remove all highlights
     for _, obj in pairs(Workspace:GetChildren()) do
         if obj:IsA("Model") then 
             local hl = obj:FindFirstChildOfClass("Highlight")
@@ -520,12 +503,10 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
         end
     end
     
-    -- Reset speed
     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then 
         LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED 
     end
     
-    -- Reset fog
     pcall(function() 
         Lighting.FogEnd = 1000
         Lighting.FogStart = 0
@@ -656,7 +637,6 @@ task.spawn(function()
     end
 end)
 
-print("✅ BRM5 PvE v1 Clean Loaded!")
-print("   🏃 Speed: " .. PERMANENT_SPEED .. " (Always On)")
+print("✅ BRM5 PvE v1 Loaded! Speed: " .. PERMANENT_SPEED)
 print("   👁 Enemy Highlights - Toggle in Visuals tab")
 print("   🌫️ No Fog - Toggle in Visuals tab")

@@ -1,8 +1,9 @@
 --[[
-    BRM5 PvE v1 - FIXED SPEED VERSION
+    BRM5 PvE v1 - FIXED MAIN MENU VERSION
+    Fixed black screen issue when going to main menu
     Permanent Speed 50 + No Fog + Enemy Highlights + Infinite Hunger/Thirst
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
---]]
+]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -12,6 +13,7 @@ local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
 
 local ScriptActive = true
 local NoFogEnabled = false
@@ -27,16 +29,17 @@ local MAX_HUNGER = 100
 local MAX_THIRST = 100
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
+local isInGame = false
 
 -- Clean up previous instances - SAFER VERSION
 if getgenv().BRM5Loaded then
     getgenv().BRM5Loaded = false
     pcall(function()
-        if game.CoreGui:FindFirstChild("BRM5GUI") then 
-            game.CoreGui.BRM5GUI:Destroy() 
+        if CoreGui:FindFirstChild("BRM5GUI") then 
+            CoreGui.BRM5GUI:Destroy() 
         end
-        if game.CoreGui:FindFirstChild("BRM5MinText") then 
-            game.CoreGui.BRM5MinText:Destroy() 
+        if CoreGui:FindFirstChild("BRM5MinText") then 
+            CoreGui.BRM5MinText:Destroy() 
         end
     end)
     
@@ -53,13 +56,29 @@ end
 getgenv().BRM5Loaded = true
 
 -- =============================================
+-- CHECK IF PLAYER IS IN GAME (NOT IN MENU)
+-- =============================================
+local function checkInGame()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char and char.Parent == Workspace and char:FindFirstChild("Humanoid") then
+            isInGame = true
+        else
+            isInGame = false
+        end
+    end)
+    return isInGame
+end
+
+-- =============================================
 -- SPEED (FIXED - With menu safety checks)
 -- =============================================
 local function applySpeed()
+    if not isInGame then return end
     pcall(function()
         if not Workspace or not LocalPlayer then return end
         local char = LocalPlayer.Character
-        if char and char.Parent == Workspace then -- Only if character is in workspace
+        if char and char.Parent == Workspace then
             local humanoid = char:FindFirstChild("Humanoid")
             if humanoid then
                 humanoid.WalkSpeed = PERMANENT_SPEED
@@ -68,19 +87,19 @@ local function applySpeed()
     end)
 end
 
--- Apply speed immediately
-applySpeed()
-
--- Apply speed on respawn
+-- Apply speed immediately after character loads
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
+    checkInGame()
     applySpeed()
 end)
 
--- Keep speed applied (fast loop)
+-- Keep speed applied (fast loop with game check)
 task.spawn(function()
     while ScriptActive do
-        applySpeed()
+        if isInGame then
+            applySpeed()
+        end
         task.wait(0.3)
     end
 end)
@@ -89,6 +108,8 @@ end)
 -- INFINITE HUNGER & THIRST SYSTEM
 -- =============================================
 local function findHungerThirstValues()
+    if not isInGame then return nil, nil end
+    
     local hungerValue, thirstValue = nil, nil
     
     pcall(function()
@@ -109,7 +130,6 @@ local function findHungerThirstValues()
         
         -- Method 2: Check common locations in BRM5
         if not hungerValue or not thirstValue then
-            -- Check PlayerGui for status bars
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
             if playerGui then
                 for _, child in pairs(playerGui:GetDescendants()) do
@@ -152,13 +172,15 @@ local function setInfiniteHunger(enabled)
     if enabled then
         task.spawn(function()
             while InfiniteHungerEnabled and ScriptActive do
-                pcall(function()
-                    local hungerValue = findHungerThirstValues()
-                    if hungerValue then
-                        hungerValue.Value = MAX_HUNGER
-                    end
-                end)
-                task.wait(1) -- Check every second
+                if isInGame then
+                    pcall(function()
+                        local hungerValue = findHungerThirstValues()
+                        if hungerValue then
+                            hungerValue.Value = MAX_HUNGER
+                        end
+                    end)
+                end
+                task.wait(1)
             end
         end)
     end
@@ -170,13 +192,15 @@ local function setInfiniteThirst(enabled)
     if enabled then
         task.spawn(function()
             while InfiniteThirstEnabled and ScriptActive do
-                pcall(function()
-                    local _, thirstValue = findHungerThirstValues()
-                    if thirstValue then
-                        thirstValue.Value = MAX_THIRST
-                    end
-                end)
-                task.wait(1) -- Check every second
+                if isInGame then
+                    pcall(function()
+                        local _, thirstValue = findHungerThirstValues()
+                        if thirstValue then
+                            thirstValue.Value = MAX_THIRST
+                        end
+                    end)
+                end
+                task.wait(1)
             end
         end)
     end
@@ -184,11 +208,12 @@ end
 
 -- More aggressive method: Find and max ALL number values that look like hunger/thirst
 local function maxAllHungerThirst()
+    if not isInGame then return end
+    
     pcall(function()
         local char = LocalPlayer.Character
         if not char then return end
         
-        -- Check character and all descendants
         local targets = {char, LocalPlayer:FindFirstChild("PlayerGui"), LocalPlayer:FindFirstChild("leaderstats")}
         
         for _, target in pairs(targets) do
@@ -209,7 +234,7 @@ end
 -- Combined hunger/thirst loop (backup method)
 task.spawn(function()
     while ScriptActive do
-        if InfiniteHungerEnabled or InfiniteThirstEnabled then
+        if (InfiniteHungerEnabled or InfiniteThirstEnabled) and isInGame then
             maxAllHungerThirst()
         end
         task.wait(2)
@@ -217,12 +242,14 @@ task.spawn(function()
 end)
 
 -- =============================================
--- HIGHLIGHT ESP
+-- HIGHLIGHT ESP (FIXED FOR MAIN MENU)
 -- =============================================
 local function addHighlight(player)
+    if not isInGame then return end
     if player == LocalPlayer then return end
+    
     pcall(function()
-        if player.Character and player.Character.Parent == Workspace then
+        if player.Character and player.Character.Parent == Workspace and player.Character:FindFirstChild("Humanoid") then
             local oldHL = player.Character:FindFirstChildOfClass("Highlight")
             if oldHL then oldHL:Destroy() end
             
@@ -249,8 +276,15 @@ local function removeHighlight(player)
 end
 
 local function updateAllHighlights()
-    -- Skip if not in game
-    if not Workspace or #Workspace:GetChildren() == 0 then return end
+    if not isInGame then 
+        -- Remove all highlights when in menu
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                removeHighlight(player)
+            end
+        end
+        return 
+    end
     
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
@@ -273,6 +307,8 @@ local function updateAllHighlights()
                                 hl.OutlineColor = Color3.fromRGB(50, 255, 50)
                             end
                         end
+                    else
+                        addHighlight(player)
                     end
                 else
                     removeHighlight(player)
@@ -282,14 +318,20 @@ local function updateAllHighlights()
     end
 end
 
+-- Initial setup with safety
+task.wait(1)
 for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then addHighlight(player) end
+    if player ~= LocalPlayer then 
+        addHighlight(player) 
+    end
 end
 
 Players.PlayerAdded:Connect(function(player)
     task.wait(1)
-    addHighlight(player)
-    updateAllHighlights()
+    if isInGame then
+        addHighlight(player)
+        updateAllHighlights()
+    end
 end)
 
 Players.PlayerRemoving:Connect(removeHighlight)
@@ -297,24 +339,25 @@ Players.PlayerRemoving:Connect(removeHighlight)
 Players.PlayerAdded:Connect(function(player)
     player.CharacterAdded:Connect(function()
         task.wait(0.5)
-        addHighlight(player)
-        updateAllHighlights()
+        if isInGame then
+            addHighlight(player)
+            updateAllHighlights()
+        end
     end)
 end)
 
+-- Monitor game state and update ESP accordingly
 task.spawn(function()
     while ScriptActive do
-        if ESPEnabled and Workspace and #Workspace:GetChildren() > 0 then
+        checkInGame()
+        
+        if ESPEnabled and isInGame then
             updateAllHighlights()
         else
+            -- Clean up highlights when not in game
             for _, player in pairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
-                    pcall(function()
-                        if player.Character then
-                            local hl = player.Character:FindFirstChildOfClass("Highlight")
-                            if hl then hl.Enabled = false end
-                        end
-                    end)
+                    removeHighlight(player)
                 end
             end
         end
@@ -323,12 +366,12 @@ task.spawn(function()
 end)
 
 -- =============================================
--- GUI
+-- GUI (with safe parent checking)
 -- =============================================
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "BRM5GUI"
 GUI.ResetOnSpawn = false
-GUI.Parent = game.CoreGui
+GUI.Parent = CoreGui
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Main = Instance.new("Frame")
@@ -621,7 +664,12 @@ end, Color3.fromRGB(40, 40, 40))
 
 -- Visuals Tab
 CreateSection(VisualsPage, "HIGHLIGHTS", 10)
-CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s) ESPEnabled = s; updateAllHighlights() end)
+CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s) 
+    ESPEnabled = s
+    if isInGame then
+        updateAllHighlights()
+    end
+end)
 CreateInfoLabel(VisualsPage, "🔴 Red = Close (<50 studs)", 68, Color3.fromRGB(255,100,100))
 CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 86, Color3.fromRGB(255,200,100))
 CreateInfoLabel(VisualsPage, "🟢 Green = Far (>150 studs)", 104, Color3.fromRGB(100,255,100))
@@ -763,7 +811,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Update Loops
+-- Update Loops (with safe checks)
 task.spawn(function()
     while ScriptActive do
         fpsCount += 1
@@ -817,7 +865,12 @@ task.spawn(function()
     end
 end)
 
-print("✅ BRM5 PvE v1 Loaded! Speed: " .. PERMANENT_SPEED)
+-- Initial game state check
+checkInGame()
+
+print("✅ BRM5 PvE v1 Loaded! (Fixed Main Menu Version)")
+print("   Speed: " .. PERMANENT_SPEED)
 print("   🧟 Zombies Tab: Infinite Hunger & Thirst")
 print("   👁 Enemy Highlights - Toggle in Visuals tab")
 print("   🌫️ No Fog - Toggle in Visuals tab")
+print("   ✅ Fixed: No more black screen when going to main menu")

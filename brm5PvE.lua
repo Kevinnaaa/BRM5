@@ -24,29 +24,42 @@ local DEFAULT_SPEED = 16
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 
--- Clean up previous instances
+-- Clean up previous instances - SAFER VERSION
 if getgenv().BRM5Loaded then
     getgenv().BRM5Loaded = false
-    if game.CoreGui:FindFirstChild("BRM5GUI") then game.CoreGui.BRM5GUI:Destroy() end
-    if game.CoreGui:FindFirstChild("BRM5MinText") then game.CoreGui.BRM5MinText:Destroy() end
-    for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") then
-            local hl = obj:FindFirstChildOfClass("Highlight")
-            if hl then hl:Destroy() end
+    pcall(function()
+        if game.CoreGui:FindFirstChild("BRM5GUI") then 
+            game.CoreGui.BRM5GUI:Destroy() 
         end
-    end
+        if game.CoreGui:FindFirstChild("BRM5MinText") then 
+            game.CoreGui.BRM5MinText:Destroy() 
+        end
+    end)
+    
+    -- Safer highlight cleanup - only target actual player/NPC models
+    pcall(function()
+        for _, obj in pairs(Workspace:GetChildren()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local hl = obj:FindFirstChildOfClass("Highlight")
+                if hl then hl:Destroy() end
+            end
+        end
+    end)
 end
 getgenv().BRM5Loaded = true
 
 -- =============================================
--- SPEED (FIXED - Same as working Blox Fruits)
+-- SPEED (FIXED - With menu safety checks)
 -- =============================================
 local function applySpeed()
     pcall(function()
+        if not Workspace or not LocalPlayer then return end
         local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            local humanoid = char.Humanoid
-            humanoid.WalkSpeed = PERMANENT_SPEED
+        if char and char.Parent == Workspace then -- Only if character is in workspace
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = PERMANENT_SPEED
+            end
         end
     end)
 end
@@ -60,11 +73,11 @@ LocalPlayer.CharacterAdded:Connect(function()
     applySpeed()
 end)
 
--- Keep speed applied (fast loop like Blox Fruits)
+-- Keep speed applied (fast loop)
 task.spawn(function()
     while ScriptActive do
         applySpeed()
-        task.wait(0.3) -- Same interval as working script
+        task.wait(0.3)
     end
 end)
 
@@ -74,7 +87,7 @@ end)
 local function addHighlight(player)
     if player == LocalPlayer then return end
     pcall(function()
-        if player.Character then
+        if player.Character and player.Character.Parent == Workspace then
             local oldHL = player.Character:FindFirstChildOfClass("Highlight")
             if oldHL then oldHL:Destroy() end
             
@@ -101,10 +114,13 @@ local function removeHighlight(player)
 end
 
 local function updateAllHighlights()
+    -- Skip if not in game
+    if not Workspace or #Workspace:GetChildren() == 0 then return end
+    
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             pcall(function()
-                if player.Character then
+                if player.Character and player.Character.Parent == Workspace then
                     local hl = player.Character:FindFirstChildOfClass("Highlight")
                     if hl then
                         hl.Enabled = ESPEnabled
@@ -153,7 +169,7 @@ end)
 
 task.spawn(function()
     while ScriptActive do
-        if ESPEnabled then 
+        if ESPEnabled and Workspace and #Workspace:GetChildren() > 0 then
             updateAllHighlights()
         else
             for _, player in pairs(Players:GetPlayers()) do
@@ -496,16 +512,21 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
     ScriptActive = false
     SpeedBoostEnabled = false
     
-    for _, obj in pairs(Workspace:GetChildren()) do
-        if obj:IsA("Model") then 
-            local hl = obj:FindFirstChildOfClass("Highlight")
-            if hl then hl:Destroy() end 
+    -- Safe cleanup
+    pcall(function()
+        for _, obj in pairs(Workspace:GetChildren()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local hl = obj:FindFirstChildOfClass("Highlight")
+                if hl then hl:Destroy() end 
+            end
         end
-    end
+    end)
     
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then 
-        LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED 
-    end
+    pcall(function()
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then 
+            LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED 
+        end
+    end)
     
     pcall(function() 
         Lighting.FogEnd = 1000
@@ -513,7 +534,7 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
         Lighting.Brightness = 1
     end)
     
-    GUI:Destroy()
+    pcall(function() GUI:Destroy() end)
     print("✅ Script terminated. All features disabled.")
 end, Color3.fromRGB(100, 20, 20))
 
@@ -595,8 +616,10 @@ task.spawn(function()
             fps = math.floor(fpsCount / (tick() - lastFPSUpdate))
             fpsCount = 0
             lastFPSUpdate = tick()
-            FPSDisplay.Text = "FPS: " .. fps
-            FPSDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
+            pcall(function()
+                FPSDisplay.Text = "FPS: " .. fps
+                FPSDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
+            end)
         end
         task.wait()
     end
@@ -618,7 +641,9 @@ task.spawn(function()
         saniye += 1
         if saniye >= 60 then saniye = 0; dakika += 1 end
         if dakika >= 60 then dakika = 0; saat += 1 end
-        TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
+        pcall(function()
+            TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
+        end)
         task.wait(1)
     end
 end)

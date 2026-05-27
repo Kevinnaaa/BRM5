@@ -1,6 +1,6 @@
 --[[
     BRM5 PvE v1 - FIXED SPEED VERSION
-    Permanent Speed 50 + No Fog + Enemy Highlights
+    Permanent Speed 50 + No Fog + Enemy Highlights + Infinite Hunger/Thirst
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
 --]]
 
@@ -18,9 +18,13 @@ local NoFogEnabled = false
 local Minimized = false
 local ESPEnabled = false
 local SpeedBoostEnabled = true
+local InfiniteHungerEnabled = false
+local InfiniteThirstEnabled = false
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
+local MAX_HUNGER = 100
+local MAX_THIRST = 100
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 
@@ -78,6 +82,137 @@ task.spawn(function()
     while ScriptActive do
         applySpeed()
         task.wait(0.3)
+    end
+end)
+
+-- =============================================
+-- INFINITE HUNGER & THIRST SYSTEM
+-- =============================================
+local function findHungerThirstValues()
+    local hungerValue, thirstValue = nil, nil
+    
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        -- Method 1: Look for common hunger/thirst value objects
+        for _, child in pairs(char:GetDescendants()) do
+            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                local name = child.Name:lower()
+                if name:find("hunger") or name:find("food") then
+                    hungerValue = child
+                elseif name:find("thirst") or name:find("water") or name:find("drink") then
+                    thirstValue = child
+                end
+            end
+        end
+        
+        -- Method 2: Check common locations in BRM5
+        if not hungerValue or not thirstValue then
+            -- Check PlayerGui for status bars
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                for _, child in pairs(playerGui:GetDescendants()) do
+                    if child:IsA("NumberValue") or child:IsA("IntValue") then
+                        local name = child.Name:lower()
+                        if (name:find("hunger") or name:find("food")) and not hungerValue then
+                            hungerValue = child
+                        elseif (name:find("thirst") or name:find("water")) and not thirstValue then
+                            thirstValue = child
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Method 3: Check for leaderstats or similar
+        if not hungerValue or not thirstValue then
+            local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+            if leaderstats then
+                for _, child in pairs(leaderstats:GetChildren()) do
+                    if child:IsA("NumberValue") or child:IsA("IntValue") then
+                        local name = child.Name:lower()
+                        if name:find("hunger") or name:find("food") then
+                            hungerValue = child
+                        elseif name:find("thirst") or name:find("water") then
+                            thirstValue = child
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    return hungerValue, thirstValue
+end
+
+local function setInfiniteHunger(enabled)
+    InfiniteHungerEnabled = enabled
+    
+    if enabled then
+        task.spawn(function()
+            while InfiniteHungerEnabled and ScriptActive do
+                pcall(function()
+                    local hungerValue = findHungerThirstValues()
+                    if hungerValue then
+                        hungerValue.Value = MAX_HUNGER
+                    end
+                end)
+                task.wait(1) -- Check every second
+            end
+        end)
+    end
+end
+
+local function setInfiniteThirst(enabled)
+    InfiniteThirstEnabled = enabled
+    
+    if enabled then
+        task.spawn(function()
+            while InfiniteThirstEnabled and ScriptActive do
+                pcall(function()
+                    local _, thirstValue = findHungerThirstValues()
+                    if thirstValue then
+                        thirstValue.Value = MAX_THIRST
+                    end
+                end)
+                task.wait(1) -- Check every second
+            end
+        end)
+    end
+end
+
+-- More aggressive method: Find and max ALL number values that look like hunger/thirst
+local function maxAllHungerThirst()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        -- Check character and all descendants
+        local targets = {char, LocalPlayer:FindFirstChild("PlayerGui"), LocalPlayer:FindFirstChild("leaderstats")}
+        
+        for _, target in pairs(targets) do
+            if target then
+                for _, child in pairs(target:GetDescendants()) do
+                    if child:IsA("NumberValue") or child:IsA("IntValue") then
+                        local name = child.Name:lower()
+                        if name:find("hunger") or name:find("food") or name:find("thirst") or name:find("water") or name:find("drink") then
+                            child.Value = MAX_HUNGER
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+-- Combined hunger/thirst loop (backup method)
+task.spawn(function()
+    while ScriptActive do
+        if InfiniteHungerEnabled or InfiniteThirstEnabled then
+            maxAllHungerThirst()
+        end
+        task.wait(2)
     end
 end)
 
@@ -457,14 +592,32 @@ end
 
 -- Create Tabs
 local SpeedPage = CreateTab("Speed", "🏃", 1)
-local VisualsPage = CreateTab("Visuals", "👁", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
+local ZombiesPage = CreateTab("Zombies", "🧟", 2)
+local VisualsPage = CreateTab("Visuals", "👁", 3)
+local SettingsPage = CreateTab("Settings", "⚙️", 4)
 
 -- Speed Tab
 CreateSection(SpeedPage, "PERMANENT SPEED", 10)
 CreateInfoLabel(SpeedPage, "🏃 Speed: " .. PERMANENT_SPEED .. " (Always On)", 34, Color3.fromRGB(100,255,100))
 CreateInfoLabel(SpeedPage, "Default: " .. DEFAULT_SPEED, 54, Color3.fromRGB(150,150,150))
 CreateInfoLabel(SpeedPage, "✅ Speed auto-applies on respawn", 74, Color3.fromRGB(100,255,100))
+
+-- Zombies Tab
+CreateSection(ZombiesPage, "SURVIVAL CHEATS", 10)
+CreateToggle(ZombiesPage, "🍖 Infinite Hunger", false, 34, function(s)
+    setInfiniteHunger(s)
+end)
+CreateInfoLabel(ZombiesPage, "Keeps hunger at maximum ("..MAX_HUNGER..")", 68, Color3.fromRGB(255,200,100))
+
+CreateToggle(ZombiesPage, "💧 Infinite Thirst", false, 94, function(s)
+    setInfiniteThirst(s)
+end)
+CreateInfoLabel(ZombiesPage, "Keeps thirst at maximum ("..MAX_THIRST..")", 128, Color3.fromRGB(100,200,255))
+
+CreateSection(ZombiesPage, "COMBAT HELP", 155)
+CreateButton(ZombiesPage, "💀 Zombie ESP Coming Soon", 179, function()
+    print("Zombie ESP feature coming in next update!")
+end, Color3.fromRGB(40, 40, 40))
 
 -- Visuals Tab
 CreateSection(VisualsPage, "HIGHLIGHTS", 10)
@@ -505,12 +658,14 @@ SettingsName.Font = Enum.Font.GothamBold
 SettingsName.TextSize = 12
 SettingsName.Parent = SettingsPage
 
-CreateInfoLabel(SettingsPage, "Features: Speed Boost + No Fog + ESP", 60, Color3.fromRGB(180,200,255))
+CreateInfoLabel(SettingsPage, "Features: Speed + Hunger/Thirst + ESP + No Fog", 60, Color3.fromRGB(180,200,255))
 
 CreateSection(SettingsPage, "TERMINATE", 90)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
     ScriptActive = false
     SpeedBoostEnabled = false
+    InfiniteHungerEnabled = false
+    InfiniteThirstEnabled = false
     
     -- Safe cleanup
     pcall(function()
@@ -663,5 +818,6 @@ task.spawn(function()
 end)
 
 print("✅ BRM5 PvE v1 Loaded! Speed: " .. PERMANENT_SPEED)
+print("   🧟 Zombies Tab: Infinite Hunger & Thirst")
 print("   👁 Enemy Highlights - Toggle in Visuals tab")
 print("   🌫️ No Fog - Toggle in Visuals tab")

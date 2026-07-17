@@ -1,7 +1,8 @@
 --[[
-    BRM5 PvE v1 - FIXED MAIN MENU VERSION
+    BRM5 PvE v1 - FIXED MAIN MENU VERSION + ADVANCED ESP
     Fixed black screen issue when going to main menu
     Permanent Speed 50 + No Fog + Enemy Highlights + Infinite Hunger/Thirst
+    Advanced ESP with Name/Health/Distance indicators
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
 ]]
 
@@ -14,6 +15,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
+local Teams = game:GetService("Teams")
 
 local ScriptActive = true
 local NoFogEnabled = false
@@ -30,6 +32,18 @@ local MAX_THIRST = 100
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 local isInGame = false
+
+-- ESP Configuration
+local ESPConfig = {
+    MaxDistance = 2000,
+    TextSize = 18,
+    Font = Enum.Font.GothamBold,
+    HighlightEnabled = true,
+    ShowHealth = true,
+    ShowDistance = true,
+}
+
+local ESPObjects = {}
 
 -- Clean up previous instances - SAFER VERSION
 if getgenv().BRM5Loaded then
@@ -49,6 +63,8 @@ if getgenv().BRM5Loaded then
             if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
                 local hl = obj:FindFirstChildOfClass("Highlight")
                 if hl then hl:Destroy() end
+                local bg = obj:FindFirstChildOfClass("BillboardGui")
+                if bg then bg:Destroy() end
             end
         end
     end)
@@ -68,6 +84,296 @@ local function checkInGame()
         end
     end)
     return isInGame
+end
+
+-- =============================================
+-- GET TEAM COLOR
+-- =============================================
+local function getTeamColor(player)
+    if player.Team then
+        return player.Team.TeamColor.Color
+    end
+    return Color3.fromRGB(0, 150, 255)
+end
+
+-- =============================================
+-- ADVANCED ESP SYSTEM
+-- =============================================
+local function createAdvancedESP(player)
+    if player == LocalPlayer then return end
+    
+    -- Clean up existing ESP for this player
+    if ESPObjects[player.Name] then
+        pcall(function()
+            if ESPObjects[player.Name].Billboard then
+                ESPObjects[player.Name].Billboard:Destroy()
+            end
+            if ESPObjects[player.Name].Highlight then
+                ESPObjects[player.Name].Highlight:Destroy()
+            end
+        end)
+        ESPObjects[player.Name] = nil
+    end
+    
+    local function addESP(character)
+        if not character or not isInGame then return end
+        
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        local rootPart = character:WaitForChild("HumanoidRootPart", 5)
+        local head = character:WaitForChild("Head", 5)
+        
+        if not humanoid or not rootPart or not head then 
+            return 
+        end
+        
+        local teamColor = getTeamColor(player)
+        
+        -- Create Highlight
+        local highlight = nil
+        if ESPConfig.HighlightEnabled then
+            highlight = Instance.new("Highlight")
+            highlight.FillColor = teamColor
+            highlight.OutlineColor = Color3.new(1, 1, 1)
+            highlight.FillTransparency = 0.3
+            highlight.OutlineTransparency = 0
+            highlight.Enabled = ESPEnabled
+            highlight.Parent = character
+        end
+        
+        -- Create Billboard GUI
+        local billboard = Instance.new("BillboardGui")
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 200, 0, 80)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Enabled = ESPEnabled
+        billboard.Parent = character
+        billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        billboard.ResetOnSpawn = false
+        
+        -- Main Container
+        local mainContainer = Instance.new("Frame", billboard)
+        mainContainer.Size = UDim2.new(1, 0, 1, 0)
+        mainContainer.BackgroundTransparency = 1
+        mainContainer.BorderSizePixel = 0
+        
+        -- Name Label
+        local nameLabel = Instance.new("TextLabel", mainContainer)
+        nameLabel.Size = UDim2.new(1, 0, 0, 16)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = teamColor
+        nameLabel.TextSize = ESPConfig.TextSize
+        nameLabel.Font = ESPConfig.Font
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+        
+        -- Health Bar Background
+        local healthBarBg = Instance.new("Frame", mainContainer)
+        healthBarBg.Size = UDim2.new(0.9, 0, 0, 12)
+        healthBarBg.Position = UDim2.new(0.05, 0, 0, 18)
+        healthBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        healthBarBg.BorderSizePixel = 1
+        healthBarBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        local healthBgCorner = Instance.new("UICorner", healthBarBg)
+        healthBgCorner.CornerRadius = UDim.new(0, 2)
+        
+        -- Health Bar Fill
+        local healthBarFill = Instance.new("Frame", healthBarBg)
+        healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+        healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        healthBarFill.BorderSizePixel = 0
+        local healthFillCorner = Instance.new("UICorner", healthBarFill)
+        healthFillCorner.CornerRadius = UDim.new(0, 2)
+        
+        -- Health Text
+        local healthLabel = Instance.new("TextLabel", mainContainer)
+        healthLabel.Size = UDim2.new(1, 0, 0, 12)
+        healthLabel.Position = UDim2.new(0, 0, 0, 20)
+        healthLabel.BackgroundTransparency = 1
+        healthLabel.Text = "HP: 100/100"
+        healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        healthLabel.TextSize = 10
+        healthLabel.Font = Enum.Font.Gotham
+        healthLabel.TextXAlignment = Enum.TextXAlignment.Center
+        healthLabel.TextStrokeTransparency = 0.5
+        healthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        healthLabel.Visible = ESPConfig.ShowHealth
+        
+        -- Distance Label
+        local distanceLabel = Instance.new("TextLabel", mainContainer)
+        distanceLabel.Size = UDim2.new(1, 0, 0, 14)
+        distanceLabel.Position = UDim2.new(0, 0, 0, 62)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.Text = "Distance: 0m"
+        distanceLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+        distanceLabel.TextSize = 11
+        distanceLabel.Font = Enum.Font.GothamBold
+        distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+        distanceLabel.TextStrokeTransparency = 0.5
+        distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        distanceLabel.Visible = ESPConfig.ShowDistance
+        
+        ESPObjects[player.Name] = {
+            Billboard = billboard,
+            Highlight = highlight,
+            NameLabel = nameLabel,
+            HealthBarFill = healthBarFill,
+            HealthLabel = healthLabel,
+            DistanceLabel = distanceLabel,
+            Humanoid = humanoid,
+            RootPart = rootPart,
+            Head = head,
+            Character = character
+        }
+    end
+    
+    if player.Character then
+        addESP(player.Character)
+    end
+    
+    player.CharacterAdded:Connect(function(character)
+        task.wait(0.5)
+        if isInGame then
+            addESP(character)
+        end
+    end)
+end
+
+-- =============================================
+-- UPDATE ESP VISIBILITY AND DATA
+-- =============================================
+local function updateESP()
+    if not ESPEnabled or not isInGame then
+        -- Hide all ESP
+        for _, espData in pairs(ESPObjects) do
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+        end
+        return
+    end
+    
+    local localChar = LocalPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
+    if not localRoot then return end
+    
+    for playerName, espData in pairs(ESPObjects) do
+        if not espData or not espData.Character then 
+            continue 
+        end
+        
+        local player = Players:FindFirstChild(playerName)
+        if not player then 
+            if espData.Billboard then espData.Billboard:Destroy() end
+            if espData.Highlight then espData.Highlight:Destroy() end
+            ESPObjects[playerName] = nil
+            continue
+        end
+        
+        local character = player.Character
+        if not character or character.Parent ~= Workspace then 
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+            continue
+        end
+        
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+        local head = character:FindFirstChild("Head")
+        
+        if not rootPart or not humanoid or not head then 
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+            continue
+        end
+        
+        -- Update references
+        espData.RootPart = rootPart
+        espData.Humanoid = humanoid
+        espData.Head = head
+        espData.Character = character
+        
+        -- Check distance
+        local dist = (localRoot.Position - rootPart.Position).Magnitude
+        local isInRange = dist <= ESPConfig.MaxDistance
+        
+        if isInRange then
+            -- Enable ESP
+            if espData.Highlight then 
+                espData.Highlight.Enabled = true
+                espData.Highlight.Parent = character
+            end
+            if espData.Billboard then 
+                espData.Billboard.Enabled = true
+                espData.Billboard.Adornee = head
+            end
+            
+            -- Update Health
+            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+            if espData.HealthBarFill then
+                espData.HealthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+                if healthPercent > 0.5 then
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                elseif healthPercent > 0.25 then
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+            
+            if espData.HealthLabel then
+                espData.HealthLabel.Text = "HP: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+            end
+            
+            -- Update Distance
+            if espData.DistanceLabel then
+                local distance = math.floor(dist)
+                espData.DistanceLabel.Text = "Distance: " .. distance .. "m"
+                if distance < 50 then
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif distance < 150 then
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+            end
+            
+            -- Update highlight color on team change
+            if espData.Highlight then
+                espData.Highlight.FillColor = getTeamColor(player)
+            end
+            if espData.NameLabel then
+                espData.NameLabel.TextColor3 = getTeamColor(player)
+            end
+            
+        else
+            -- Disable ESP if out of range
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+        end
+    end
+end
+
+-- =============================================
+-- TEAM CHANGE HANDLER
+-- =============================================
+local function onTeamChanged(player)
+    if player == LocalPlayer then return end
+    
+    local espData = ESPObjects[player.Name]
+    if not espData then return end
+    
+    local teamColor = getTeamColor(player)
+    
+    if espData.Highlight then
+        espData.Highlight.FillColor = teamColor
+    end
+    
+    if espData.NameLabel then
+        espData.NameLabel.TextColor3 = teamColor
+    end
 end
 
 -- =============================================
@@ -242,126 +548,62 @@ task.spawn(function()
 end)
 
 -- =============================================
--- HIGHLIGHT ESP (FIXED FOR MAIN MENU)
+-- INITIALIZE ESP FOR ALL PLAYERS
 -- =============================================
-local function addHighlight(player)
-    if not isInGame then return end
-    if player == LocalPlayer then return end
-    
-    pcall(function()
-        if player.Character and player.Character.Parent == Workspace and player.Character:FindFirstChild("Humanoid") then
-            local oldHL = player.Character:FindFirstChildOfClass("Highlight")
-            if oldHL then oldHL:Destroy() end
-            
-            local highlight = Instance.new("Highlight")
-            highlight.Name = "ESP_Highlight"
-            highlight.Adornee = player.Character
-            highlight.Parent = player.Character
-            highlight.FillColor = Color3.fromRGB(255, 0, 0)
-            highlight.FillTransparency = 0.85
-            highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
-            highlight.OutlineTransparency = 0.3
-            highlight.Enabled = ESPEnabled
-        end
-    end)
-end
-
-local function removeHighlight(player)
-    pcall(function()
-        if player and player.Character then
-            local hl = player.Character:FindFirstChildOfClass("Highlight")
-            if hl then hl:Destroy() end
-        end
-    end)
-end
-
-local function updateAllHighlights()
-    if not isInGame then 
-        -- Remove all highlights when in menu
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                removeHighlight(player)
-            end
-        end
-        return 
-    end
-    
-    for _, player in pairs(Players:GetPlayers()) do
+local function initializeESP()
+    for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            pcall(function()
-                if player.Character and player.Character.Parent == Workspace then
-                    local hl = player.Character:FindFirstChildOfClass("Highlight")
-                    if hl then
-                        hl.Enabled = ESPEnabled
-                        local char = LocalPlayer.Character
-                        if char and char:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("HumanoidRootPart") then
-                            local dist = (char.HumanoidRootPart.Position - player.Character.HumanoidRootPart.Position).Magnitude
-                            if dist < 50 then
-                                hl.FillColor = Color3.fromRGB(255, 0, 0)
-                                hl.OutlineColor = Color3.fromRGB(255, 50, 50)
-                            elseif dist < 150 then
-                                hl.FillColor = Color3.fromRGB(255, 200, 0)
-                                hl.OutlineColor = Color3.fromRGB(255, 180, 0)
-                            else
-                                hl.FillColor = Color3.fromRGB(0, 255, 0)
-                                hl.OutlineColor = Color3.fromRGB(50, 255, 50)
-                            end
-                        end
-                    else
-                        addHighlight(player)
-                    end
-                else
-                    removeHighlight(player)
-                end
+            createAdvancedESP(player)
+            player:GetPropertyChangedSignal("Team"):Connect(function()
+                onTeamChanged(player)
             end)
         end
     end
 end
 
--- Initial setup with safety
 task.wait(1)
-for _, player in pairs(Players:GetPlayers()) do
-    if player ~= LocalPlayer then 
-        addHighlight(player) 
-    end
-end
+initializeESP()
 
 Players.PlayerAdded:Connect(function(player)
-    task.wait(1)
-    if isInGame then
-        addHighlight(player)
-        updateAllHighlights()
+    if player ~= LocalPlayer then
+        task.wait(1)
+        createAdvancedESP(player)
+        player:GetPropertyChangedSignal("Team"):Connect(function()
+            onTeamChanged(player)
+        end)
     end
 end)
 
-Players.PlayerRemoving:Connect(removeHighlight)
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        if isInGame then
-            addHighlight(player)
-            updateAllHighlights()
-        end
-    end)
+Players.PlayerRemoving:Connect(function(player)
+    if ESPObjects[player.Name] then
+        pcall(function()
+            if ESPObjects[player.Name].Billboard then
+                ESPObjects[player.Name].Billboard:Destroy()
+            end
+            if ESPObjects[player.Name].Highlight then
+                ESPObjects[player.Name].Highlight:Destroy()
+            end
+        end)
+        ESPObjects[player.Name] = nil
+    end
 end)
 
--- Monitor game state and update ESP accordingly
+-- =============================================
+-- ESP UPDATE LOOP
+-- =============================================
 task.spawn(function()
     while ScriptActive do
         checkInGame()
-        
         if ESPEnabled and isInGame then
-            updateAllHighlights()
+            updateESP()
         else
-            -- Clean up highlights when not in game
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LocalPlayer then
-                    removeHighlight(player)
-                end
+            -- Hide all ESP when not in game or disabled
+            for _, espData in pairs(ESPObjects) do
+                if espData.Highlight then espData.Highlight.Enabled = false end
+                if espData.Billboard then espData.Billboard.Enabled = false end
             end
         end
-        task.wait(0.5)
+        task.wait(0.1)
     end
 end)
 
@@ -657,25 +899,25 @@ CreateToggle(ZombiesPage, "💧 Infinite Thirst", false, 94, function(s)
 end)
 CreateInfoLabel(ZombiesPage, "Keeps thirst at maximum ("..MAX_THIRST..")", 128, Color3.fromRGB(100,200,255))
 
-CreateSection(ZombiesPage, "COMBAT HELP", 155)
-CreateButton(ZombiesPage, "💀 Zombie ESP Coming Soon", 179, function()
-    print("Zombie ESP feature coming in next update!")
-end, Color3.fromRGB(40, 40, 40))
-
 -- Visuals Tab
-CreateSection(VisualsPage, "HIGHLIGHTS", 10)
-CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s) 
+CreateSection(VisualsPage, "ADVANCED ESP", 10)
+CreateToggle(VisualsPage, "Enable ESP", false, 34, function(s) 
     ESPEnabled = s
     if isInGame then
-        updateAllHighlights()
+        -- Update all ESP visibility
+        for _, espData in pairs(ESPObjects) do
+            if espData.Highlight then espData.Highlight.Enabled = s end
+            if espData.Billboard then espData.Billboard.Enabled = s end
+        end
     end
 end)
-CreateInfoLabel(VisualsPage, "🔴 Red = Close (<50 studs)", 68, Color3.fromRGB(255,100,100))
-CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 86, Color3.fromRGB(255,200,100))
-CreateInfoLabel(VisualsPage, "🟢 Green = Far (>150 studs)", 104, Color3.fromRGB(100,255,100))
+CreateInfoLabel(VisualsPage, "👤 Shows: Name, Health, Distance", 68, Color3.fromRGB(180,200,255))
+CreateInfoLabel(VisualsPage, "🟢 Green = Close (<50 studs)", 86, Color3.fromRGB(100,255,100))
+CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 104, Color3.fromRGB(255,200,100))
+CreateInfoLabel(VisualsPage, "🔴 Red = Far (>150 studs)", 122, Color3.fromRGB(255,100,100))
 
-CreateSection(VisualsPage, "ENVIRONMENT", 132)
-CreateToggle(VisualsPage, "No Fog", false, 156, function(s)
+CreateSection(VisualsPage, "ENVIRONMENT", 150)
+CreateToggle(VisualsPage, "No Fog", false, 174, function(s)
     NoFogEnabled = s
     if s then 
         pcall(function() 
@@ -721,6 +963,8 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
             if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
                 local hl = obj:FindFirstChildOfClass("Highlight")
                 if hl then hl:Destroy() end 
+                local bg = obj:FindFirstChildOfClass("BillboardGui")
+                if bg then bg:Destroy() end
             end
         end
     end)
@@ -868,9 +1112,9 @@ end)
 -- Initial game state check
 checkInGame()
 
-print("✅ BRM5 PvE v1 Loaded! (Fixed Main Menu Version)")
+print("✅ BRM5 PvE v1 Loaded! (Fixed Main Menu Version + Advanced ESP)")
 print("   Speed: " .. PERMANENT_SPEED)
 print("   🧟 Zombies Tab: Infinite Hunger & Thirst")
-print("   👁 Enemy Highlights - Toggle in Visuals tab")
+print("   👁 Visuals Tab: Advanced ESP (Name, Health, Distance)")
 print("   🌫️ No Fog - Toggle in Visuals tab")
 print("   ✅ Fixed: No more black screen when going to main menu")

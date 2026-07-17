@@ -1,8 +1,8 @@
 --[[
-    BRM5 PvE v1 - FIXED MAIN MENU VERSION + ADVANCED ESP
+    BRM5 PvE v1 - NPC DETECTION + ADVANCED ESP
     Fixed black screen issue when going to main menu
     Permanent Speed 50 + No Fog + Enemy Highlights + Infinite Hunger/Thirst
-    Advanced ESP with Name/Health/Distance indicators
+    Advanced ESP with Name/Health/Distance for Players AND NPCs
     Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
 ]]
 
@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 local Teams = game:GetService("Teams")
+local CollectionService = game:GetService("CollectionService")
 
 local ScriptActive = true
 local NoFogEnabled = false
@@ -24,6 +25,7 @@ local ESPEnabled = false
 local SpeedBoostEnabled = true
 local InfiniteHungerEnabled = false
 local InfiniteThirstEnabled = false
+local NPCESPEnabled = false
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
@@ -41,9 +43,12 @@ local ESPConfig = {
     HighlightEnabled = true,
     ShowHealth = true,
     ShowDistance = true,
+    NPCMaxDistance = 1500,
+    NPCColor = Color3.fromRGB(255, 0, 0), -- Red for NPCs
 }
 
 local ESPObjects = {}
+local NPCEntities = {}
 
 -- Clean up previous instances - SAFER VERSION
 if getgenv().BRM5Loaded then
@@ -57,7 +62,7 @@ if getgenv().BRM5Loaded then
         end
     end)
     
-    -- Safer highlight cleanup - only target actual player/NPC models
+    -- Safer cleanup
     pcall(function()
         for _, obj in pairs(Workspace:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
@@ -97,9 +102,208 @@ local function getTeamColor(player)
 end
 
 -- =============================================
--- ADVANCED ESP SYSTEM
+-- DETECT IF ENTITY IS NPC
 -- =============================================
-local function createAdvancedESP(player)
+local function isNPC(character)
+    if not character or not character:IsA("Model") then return false end
+    if character:FindFirstChild("Humanoid") then
+        -- Check if it's a player
+        local owner = Players:GetPlayerFromCharacter(character)
+        if owner then return false end
+        
+        -- Check for NPC indicators
+        local npcIndicators = {
+            "NPC", "Zombie", "AI", "Enemy", "Bot", "Monster",
+            "Walker", "Runner", "Boss", "Spawn", "Creep"
+        }
+        
+        for _, indicator in ipairs(npcIndicators) do
+            if character.Name:find(indicator) then
+                return true
+            end
+        end
+        
+        -- Check for NPC tags
+        local tags = character:GetDescendants()
+        for _, tag in pairs(tags) do
+            if tag:IsA("StringValue") or tag:IsA("ObjectValue") then
+                local tagName = tag.Name:lower()
+                if tagName:find("npc") or tagName:find("zombie") or tagName:find("enemy") or tagName:find("ai") then
+                    return true
+                end
+            end
+        end
+        
+        -- Check for NPC attributes
+        if character:GetAttribute("NPC") or 
+           character:GetAttribute("Zombie") or 
+           character:GetAttribute("Enemy") or
+           character:GetAttribute("AI") then
+            return true
+        end
+    end
+    return false
+end
+
+-- =============================================
+-- CREATE NPC ESP
+-- =============================================
+local function createNPCESP(character)
+    if not character or character:GetName() == "" then return end
+    
+    -- Don't ESP players
+    if Players:GetPlayerFromCharacter(character) then return end
+    if not isNPC(character) then return end
+    
+    local npcKey = tostring(character)
+    
+    -- Clean up old ESP for this NPC
+    if ESPObjects[npcKey] then
+        pcall(function()
+            if ESPObjects[npcKey].Billboard then
+                ESPObjects[npcKey].Billboard:Destroy()
+            end
+            if ESPObjects[npcKey].Highlight then
+                ESPObjects[npcKey].Highlight:Destroy()
+            end
+        end)
+        ESPObjects[npcKey] = nil
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
+    local head = character:FindFirstChild("Head")
+    
+    if not humanoid or not rootPart then 
+        return 
+    end
+    
+    local npcColor = ESPConfig.NPCColor
+    
+    -- Create Highlight
+    local highlight = nil
+    if ESPConfig.HighlightEnabled then
+        highlight = Instance.new("Highlight")
+        highlight.FillColor = npcColor
+        highlight.OutlineColor = Color3.new(1, 1, 1)
+        highlight.FillTransparency = 0.35
+        highlight.OutlineTransparency = 0
+        highlight.Enabled = ESPEnabled and NPCESPEnabled
+        highlight.Parent = character
+    end
+    
+    -- Create Billboard GUI
+    local billboard = Instance.new("BillboardGui")
+    billboard.Adornee = head or rootPart
+    billboard.Size = UDim2.new(0, 200, 0, 80)
+    billboard.StudsOffset = head and Vector3.new(0, 3, 0) or Vector3.new(0, 2, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Enabled = ESPEnabled and NPCESPEnabled
+    billboard.Parent = character
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.ResetOnSpawn = false
+    
+    -- Main Container
+    local mainContainer = Instance.new("Frame", billboard)
+    mainContainer.Size = UDim2.new(1, 0, 1, 0)
+    mainContainer.BackgroundTransparency = 1
+    mainContainer.BorderSizePixel = 0
+    
+    -- Name Label (NPC indicator)
+    local nameLabel = Instance.new("TextLabel", mainContainer)
+    nameLabel.Size = UDim2.new(1, 0, 0, 16)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Text = "🧟 " .. character.Name
+    nameLabel.TextColor3 = npcColor
+    nameLabel.TextSize = ESPConfig.TextSize
+    nameLabel.Font = ESPConfig.Font
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+    
+    -- Health Bar Background
+    local healthBarBg = Instance.new("Frame", mainContainer)
+    healthBarBg.Size = UDim2.new(0.9, 0, 0, 12)
+    healthBarBg.Position = UDim2.new(0.05, 0, 0, 18)
+    healthBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    healthBarBg.BorderSizePixel = 1
+    healthBarBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    local healthBgCorner = Instance.new("UICorner", healthBarBg)
+    healthBgCorner.CornerRadius = UDim.new(0, 2)
+    
+    -- Health Bar Fill
+    local healthBarFill = Instance.new("Frame", healthBarBg)
+    healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+    healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    healthBarFill.BorderSizePixel = 0
+    local healthFillCorner = Instance.new("UICorner", healthBarFill)
+    healthFillCorner.CornerRadius = UDim.new(0, 2)
+    
+    -- Health Text
+    local healthLabel = Instance.new("TextLabel", mainContainer)
+    healthLabel.Size = UDim2.new(1, 0, 0, 12)
+    healthLabel.Position = UDim2.new(0, 0, 0, 20)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.Text = "HP: 100/100"
+    healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    healthLabel.TextSize = 10
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextXAlignment = Enum.TextXAlignment.Center
+    healthLabel.TextStrokeTransparency = 0.5
+    healthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    healthLabel.Visible = ESPConfig.ShowHealth
+    
+    -- Distance Label
+    local distanceLabel = Instance.new("TextLabel", mainContainer)
+    distanceLabel.Size = UDim2.new(1, 0, 0, 14)
+    distanceLabel.Position = UDim2.new(0, 0, 0, 62)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "Distance: 0m"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+    distanceLabel.TextSize = 11
+    distanceLabel.Font = Enum.Font.GothamBold
+    distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+    distanceLabel.TextStrokeTransparency = 0.5
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.Visible = ESPConfig.ShowDistance
+    
+    -- NPC Type Label
+    local typeLabel = Instance.new("TextLabel", mainContainer)
+    typeLabel.Size = UDim2.new(1, 0, 0, 12)
+    typeLabel.Position = UDim2.new(0, 0, 0, 48)
+    typeLabel.BackgroundTransparency = 1
+    typeLabel.Text = "NPC"
+    typeLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    typeLabel.TextSize = 10
+    typeLabel.Font = Enum.Font.GothamBold
+    typeLabel.TextXAlignment = Enum.TextXAlignment.Center
+    typeLabel.TextStrokeTransparency = 0.5
+    typeLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    ESPObjects[npcKey] = {
+        Billboard = billboard,
+        Highlight = highlight,
+        NameLabel = nameLabel,
+        HealthBarFill = healthBarFill,
+        HealthLabel = healthLabel,
+        DistanceLabel = distanceLabel,
+        TypeLabel = typeLabel,
+        Humanoid = humanoid,
+        RootPart = rootPart,
+        Head = head,
+        Character = character,
+        IsNPC = true
+    }
+    
+    -- Add to NPC tracking
+    NPCEntities[npcKey] = character
+end
+
+-- =============================================
+-- CREATE PLAYER ESP
+-- =============================================
+local function createPlayerESP(player)
     if player == LocalPlayer then return end
     
     -- Clean up existing ESP for this player
@@ -162,7 +366,7 @@ local function createAdvancedESP(player)
         nameLabel.Size = UDim2.new(1, 0, 0, 16)
         nameLabel.Position = UDim2.new(0, 0, 0, 0)
         nameLabel.BackgroundTransparency = 1
-        nameLabel.Text = player.Name
+        nameLabel.Text = "👤 " .. player.Name
         nameLabel.TextColor3 = teamColor
         nameLabel.TextSize = ESPConfig.TextSize
         nameLabel.Font = ESPConfig.Font
@@ -226,7 +430,8 @@ local function createAdvancedESP(player)
             Humanoid = humanoid,
             RootPart = rootPart,
             Head = head,
-            Character = character
+            Character = character,
+            IsNPC = false
         }
     end
     
@@ -243,10 +448,52 @@ local function createAdvancedESP(player)
 end
 
 -- =============================================
+-- SCAN FOR NPCS IN WORKSPACE
+-- =============================================
+local function scanForNPCs()
+    if not isInGame or not (ESPEnabled and NPCESPEnabled) then
+        -- Clean up NPC ESP if disabled
+        for key, espData in pairs(ESPObjects) do
+            if espData.IsNPC then
+                if espData.Billboard then espData.Billboard:Destroy() end
+                if espData.Highlight then espData.Highlight:Destroy() end
+                ESPObjects[key] = nil
+                NPCEntities[key] = nil
+            end
+        end
+        return
+    end
+    
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+            local player = Players:GetPlayerFromCharacter(obj)
+            if not player and isNPC(obj) then
+                local key = tostring(obj)
+                if not ESPObjects[key] then
+                    createNPCESP(obj)
+                end
+            end
+        end
+    end
+    
+    -- Clean up destroyed NPCs
+    for key, npc in pairs(NPCEntities) do
+        if not npc or not npc.Parent then
+            if ESPObjects[key] then
+                if ESPObjects[key].Billboard then ESPObjects[key].Billboard:Destroy() end
+                if ESPObjects[key].Highlight then ESPObjects[key].Highlight:Destroy() end
+                ESPObjects[key] = nil
+            end
+            NPCEntities[key] = nil
+        end
+    end
+end
+
+-- =============================================
 -- UPDATE ESP VISIBILITY AND DATA
 -- =============================================
 local function updateESP()
-    if not ESPEnabled or not isInGame then
+    if not isInGame or not ESPEnabled then
         -- Hide all ESP
         for _, espData in pairs(ESPObjects) do
             if espData.Highlight then espData.Highlight.Enabled = false end
@@ -259,20 +506,12 @@ local function updateESP()
     local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
     if not localRoot then return end
     
-    for playerName, espData in pairs(ESPObjects) do
+    for key, espData in pairs(ESPObjects) do
         if not espData or not espData.Character then 
             continue 
         end
         
-        local player = Players:FindFirstChild(playerName)
-        if not player then 
-            if espData.Billboard then espData.Billboard:Destroy() end
-            if espData.Highlight then espData.Highlight:Destroy() end
-            ESPObjects[playerName] = nil
-            continue
-        end
-        
-        local character = player.Character
+        local character = espData.Character
         if not character or character.Parent ~= Workspace then 
             if espData.Highlight then espData.Highlight.Enabled = false end
             if espData.Billboard then espData.Billboard.Enabled = false end
@@ -283,7 +522,7 @@ local function updateESP()
         local humanoid = character:FindFirstChild("Humanoid")
         local head = character:FindFirstChild("Head")
         
-        if not rootPart or not humanoid or not head then 
+        if not rootPart or not humanoid then 
             if espData.Highlight then espData.Highlight.Enabled = false end
             if espData.Billboard then espData.Billboard.Enabled = false end
             continue
@@ -293,13 +532,15 @@ local function updateESP()
         espData.RootPart = rootPart
         espData.Humanoid = humanoid
         espData.Head = head
-        espData.Character = character
         
         -- Check distance
         local dist = (localRoot.Position - rootPart.Position).Magnitude
-        local isInRange = dist <= ESPConfig.MaxDistance
+        local maxDist = espData.IsNPC and ESPConfig.NPCMaxDistance or ESPConfig.MaxDistance
+        local isInRange = dist <= maxDist
         
-        if isInRange then
+        local showESP = isInRange and (espData.IsNPC and NPCESPEnabled or true)
+        
+        if showESP then
             -- Enable ESP
             if espData.Highlight then 
                 espData.Highlight.Enabled = true
@@ -307,7 +548,7 @@ local function updateESP()
             end
             if espData.Billboard then 
                 espData.Billboard.Enabled = true
-                espData.Billboard.Adornee = head
+                espData.Billboard.Adornee = head or rootPart
             end
             
             -- Update Health
@@ -340,12 +581,18 @@ local function updateESP()
                 end
             end
             
-            -- Update highlight color on team change
-            if espData.Highlight then
-                espData.Highlight.FillColor = getTeamColor(player)
-            end
-            if espData.NameLabel then
-                espData.NameLabel.TextColor3 = getTeamColor(player)
+            -- Update highlight color for non-NPC (team changes)
+            if not espData.IsNPC then
+                local player = Players:GetPlayerFromCharacter(character)
+                if player then
+                    local teamColor = getTeamColor(player)
+                    if espData.Highlight then
+                        espData.Highlight.FillColor = teamColor
+                    end
+                    if espData.NameLabel then
+                        espData.NameLabel.TextColor3 = teamColor
+                    end
+                end
             end
             
         else
@@ -363,7 +610,7 @@ local function onTeamChanged(player)
     if player == LocalPlayer then return end
     
     local espData = ESPObjects[player.Name]
-    if not espData then return end
+    if not espData or espData.IsNPC then return end
     
     local teamColor = getTeamColor(player)
     
@@ -377,7 +624,7 @@ local function onTeamChanged(player)
 end
 
 -- =============================================
--- SPEED (FIXED - With menu safety checks)
+-- SPEED SYSTEM
 -- =============================================
 local function applySpeed()
     if not isInGame then return end
@@ -393,14 +640,12 @@ local function applySpeed()
     end)
 end
 
--- Apply speed immediately after character loads
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
     checkInGame()
     applySpeed()
 end)
 
--- Keep speed applied (fast loop with game check)
 task.spawn(function()
     while ScriptActive do
         if isInGame then
@@ -422,7 +667,6 @@ local function findHungerThirstValues()
         local char = LocalPlayer.Character
         if not char then return end
         
-        -- Method 1: Look for common hunger/thirst value objects
         for _, child in pairs(char:GetDescendants()) do
             if child:IsA("NumberValue") or child:IsA("IntValue") then
                 local name = child.Name:lower()
@@ -434,7 +678,6 @@ local function findHungerThirstValues()
             end
         end
         
-        -- Method 2: Check common locations in BRM5
         if not hungerValue or not thirstValue then
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
             if playerGui then
@@ -451,7 +694,6 @@ local function findHungerThirstValues()
             end
         end
         
-        -- Method 3: Check for leaderstats or similar
         if not hungerValue or not thirstValue then
             local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
             if leaderstats then
@@ -512,7 +754,6 @@ local function setInfiniteThirst(enabled)
     end
 end
 
--- More aggressive method: Find and max ALL number values that look like hunger/thirst
 local function maxAllHungerThirst()
     if not isInGame then return end
     
@@ -537,7 +778,6 @@ local function maxAllHungerThirst()
     end)
 end
 
--- Combined hunger/thirst loop (backup method)
 task.spawn(function()
     while ScriptActive do
         if (InfiniteHungerEnabled or InfiniteThirstEnabled) and isInGame then
@@ -548,16 +788,22 @@ task.spawn(function()
 end)
 
 -- =============================================
--- INITIALIZE ESP FOR ALL PLAYERS
+-- INITIALIZE ESP FOR ALL PLAYERS AND NPCS
 -- =============================================
 local function initializeESP()
+    -- Player ESP
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
-            createAdvancedESP(player)
+            createPlayerESP(player)
             player:GetPropertyChangedSignal("Team"):Connect(function()
                 onTeamChanged(player)
             end)
         end
+    end
+    
+    -- NPC ESP
+    if NPCESPEnabled then
+        scanForNPCs()
     end
 end
 
@@ -567,7 +813,7 @@ initializeESP()
 Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
         task.wait(1)
-        createAdvancedESP(player)
+        createPlayerESP(player)
         player:GetPropertyChangedSignal("Team"):Connect(function()
             onTeamChanged(player)
         end)
@@ -589,12 +835,16 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 -- =============================================
--- ESP UPDATE LOOP
+-- ESP UPDATE LOOPS
 -- =============================================
 task.spawn(function()
     while ScriptActive do
         checkInGame()
         if ESPEnabled and isInGame then
+            -- Scan for NPCs every few seconds
+            if NPCESPEnabled then
+                scanForNPCs()
+            end
             updateESP()
         else
             -- Hide all ESP when not in game or disabled
@@ -603,7 +853,7 @@ task.spawn(function()
                 if espData.Billboard then espData.Billboard.Enabled = false end
             end
         end
-        task.wait(0.1)
+        task.wait(0.15)
     end
 end)
 
@@ -617,8 +867,8 @@ GUI.Parent = CoreGui
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 500, 0, 300)
-Main.Position = UDim2.new(0.5, -250, 0.5, -150)
+Main.Size = UDim2.new(0, 500, 0, 320)
+Main.Position = UDim2.new(0.5, -250, 0.5, -160)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -900,24 +1150,43 @@ end)
 CreateInfoLabel(ZombiesPage, "Keeps thirst at maximum ("..MAX_THIRST..")", 128, Color3.fromRGB(100,200,255))
 
 -- Visuals Tab
-CreateSection(VisualsPage, "ADVANCED ESP", 10)
-CreateToggle(VisualsPage, "Enable ESP", false, 34, function(s) 
+CreateSection(VisualsPage, "PLAYER ESP", 10)
+CreateToggle(VisualsPage, "Enable Player ESP", false, 34, function(s) 
     ESPEnabled = s
     if isInGame then
-        -- Update all ESP visibility
         for _, espData in pairs(ESPObjects) do
-            if espData.Highlight then espData.Highlight.Enabled = s end
-            if espData.Billboard then espData.Billboard.Enabled = s end
+            if not espData.IsNPC then
+                if espData.Highlight then espData.Highlight.Enabled = s end
+                if espData.Billboard then espData.Billboard.Enabled = s end
+            end
         end
     end
 end)
-CreateInfoLabel(VisualsPage, "👤 Shows: Name, Health, Distance", 68, Color3.fromRGB(180,200,255))
-CreateInfoLabel(VisualsPage, "🟢 Green = Close (<50 studs)", 86, Color3.fromRGB(100,255,100))
-CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 104, Color3.fromRGB(255,200,100))
-CreateInfoLabel(VisualsPage, "🔴 Red = Far (>150 studs)", 122, Color3.fromRGB(255,100,100))
 
-CreateSection(VisualsPage, "ENVIRONMENT", 150)
-CreateToggle(VisualsPage, "No Fog", false, 174, function(s)
+CreateSection(VisualsPage, "NPC ESP", 70)
+CreateToggle(VisualsPage, "Enable NPC ESP", false, 94, function(s) 
+    NPCESPEnabled = s
+    if s and isInGame then
+        scanForNPCs()
+    else
+        -- Clean up NPC ESP
+        for key, espData in pairs(ESPObjects) do
+            if espData.IsNPC then
+                if espData.Billboard then espData.Billboard:Destroy() end
+                if espData.Highlight then espData.Highlight:Destroy() end
+                ESPObjects[key] = nil
+                NPCEntities[key] = nil
+            end
+        end
+    end
+end)
+CreateInfoLabel(VisualsPage, "🧟 Detects Zombies & NPCs", 128, Color3.fromRGB(255,100,100))
+CreateInfoLabel(VisualsPage, "🟢 Green = Close (<50 studs)", 146, Color3.fromRGB(100,255,100))
+CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 164, Color3.fromRGB(255,200,100))
+CreateInfoLabel(VisualsPage, "🔴 Red = Far (>150 studs)", 182, Color3.fromRGB(255,100,100))
+
+CreateSection(VisualsPage, "ENVIRONMENT", 210)
+CreateToggle(VisualsPage, "No Fog", false, 234, function(s)
     NoFogEnabled = s
     if s then 
         pcall(function() 
@@ -949,15 +1218,15 @@ SettingsName.TextSize = 12
 SettingsName.Parent = SettingsPage
 
 CreateInfoLabel(SettingsPage, "Features: Speed + Hunger/Thirst + ESP + No Fog", 60, Color3.fromRGB(180,200,255))
+CreateInfoLabel(SettingsPage, "NPC Detection: Automatically finds zombies", 78, Color3.fromRGB(255,200,100))
 
-CreateSection(SettingsPage, "TERMINATE", 90)
-CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
+CreateSection(SettingsPage, "TERMINATE", 100)
+CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 124, function()
     ScriptActive = false
     SpeedBoostEnabled = false
     InfiniteHungerEnabled = false
     InfiniteThirstEnabled = false
     
-    -- Safe cleanup
     pcall(function()
         for _, obj in pairs(Workspace:GetChildren()) do
             if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
@@ -1055,7 +1324,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Update Loops (with safe checks)
+-- Update Loops
 task.spawn(function()
     while ScriptActive do
         fpsCount += 1
@@ -1112,9 +1381,10 @@ end)
 -- Initial game state check
 checkInGame()
 
-print("✅ BRM5 PvE v1 Loaded! (Fixed Main Menu Version + Advanced ESP)")
+print("✅ BRM5 PvE v1 Loaded! (NPC Detection + Advanced ESP)")
 print("   Speed: " .. PERMANENT_SPEED)
 print("   🧟 Zombies Tab: Infinite Hunger & Thirst")
-print("   👁 Visuals Tab: Advanced ESP (Name, Health, Distance)")
+print("   👁 Visuals Tab: Player ESP + NPC/Zombie ESP")
+print("   🤖 NPC ESP: Automatically detects zombies and NPCs")
 print("   🌫️ No Fog - Toggle in Visuals tab")
 print("   ✅ Fixed: No more black screen when going to main menu")

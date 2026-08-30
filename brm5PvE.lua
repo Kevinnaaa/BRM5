@@ -1,6 +1,6 @@
 -- ============================================
--- BRM5 PvE v1 - SIMPLE GUI
--- Clean & Minimal Design
+-- BRM5 PvE v1 - OVERLAY GUI
+-- Semi-transparent, game-integrated design
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -8,125 +8,177 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 
 -- ============================================
--- CREATE GUI (Simple & Safe)
+-- CREATE OVERLAY GUI
 -- ============================================
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BRM5_GUI"
-ScreenGui.Parent = player:WaitForChild("PlayerGui")  -- Use PlayerGui instead of CoreGui
+ScreenGui.Name = "BRM5_Overlay"
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ============================================
--- MAIN FRAME
+-- MAIN OVERLAY FRAME (Transparent Background)
 -- ============================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-MainFrame.BackgroundTransparency = 0
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.BackgroundTransparency = 0.7
 MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
-MainFrame.Size = UDim2.new(0, 400, 0, 300)
+MainFrame.Position = UDim2.new(0.5, -180, 0.5, -180)
+MainFrame.Size = UDim2.new(0, 360, 0, 360)
 MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 10
+
+-- Border glow
+local Border = Instance.new("Frame")
+Border.Parent = MainFrame
+Border.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+Border.BackgroundTransparency = 0
+Border.BorderSizePixel = 0
+Border.Size = UDim2.new(1, 0, 0, 2)
+Border.Position = UDim2.new(0, 0, 0, 0)
+
+local Border2 = Instance.new("Frame")
+Border2.Parent = MainFrame
+Border2.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+Border2.BackgroundTransparency = 0
+Border2.BorderSizePixel = 0
+Border2.Size = UDim2.new(1, 0, 0, 2)
+Border2.Position = UDim2.new(0, 0, 1, -2)
 
 -- Corner rounding
 local Corner = Instance.new("UICorner")
 Corner.Parent = MainFrame
-Corner.CornerRadius = UDim.new(0, 10)
+Corner.CornerRadius = UDim.new(0, 12)
 
--- Shadow
-local Shadow = Instance.new("Frame")
-Shadow.Parent = MainFrame
-Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Shadow.BackgroundTransparency = 0.5
-Shadow.BorderSizePixel = 0
-Shadow.Position = UDim2.new(0, 5, 0, 5)
-Shadow.Size = UDim2.new(1, -10, 1, -10)
-local ShadowCorner = Instance.new("UICorner")
-ShadowCorner.Parent = Shadow
-ShadowCorner.CornerRadius = UDim.new(0, 10)
+-- Inner glow effect
+local Glow = Instance.new("Frame")
+Glow.Parent = MainFrame
+Glow.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+Glow.BackgroundTransparency = 0.9
+Glow.BorderSizePixel = 0
+Glow.Position = UDim2.new(0.05, 0, 0.05, 0)
+Glow.Size = UDim2.new(0.9, 0, 0.9, 0)
+local GlowCorner = Instance.new("UICorner")
+GlowCorner.Parent = Glow
+GlowCorner.CornerRadius = UDim.new(0, 10)
 
 -- ============================================
--- TITLE BAR (Draggable)
+-- TOP BAR (Overlay Style)
 -- ============================================
-local TitleBar = Instance.new("Frame")
-TitleBar.Parent = MainFrame
-TitleBar.BackgroundColor3 = Color3.fromRGB(0, 150, 150)
-TitleBar.BackgroundTransparency = 0
-TitleBar.BorderSizePixel = 0
-TitleBar.Size = UDim2.new(1, 0, 0, 40)
+local TopBar = Instance.new("Frame")
+TopBar.Parent = MainFrame
+TopBar.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+TopBar.BackgroundTransparency = 0.15
+TopBar.BorderSizePixel = 0
+TopBar.Size = UDim2.new(1, 0, 0, 45)
 
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.Parent = TitleBar
-TitleCorner.CornerRadius = UDim.new(0, 10)
+local TopCorner = Instance.new("UICorner")
+TopCorner.Parent = TopBar
+TopCorner.CornerRadius = UDim.new(0, 12)
 
--- Title Text
-local TitleText = Instance.new("TextLabel")
-TitleText.Parent = TitleBar
-TitleText.BackgroundTransparency = 1
-TitleText.Position = UDim2.new(0, 10, 0, 0)
-TitleText.Size = UDim2.new(0, 200, 1, 0)
-TitleText.Font = Enum.Font.GothamBold
-TitleText.Text = "🎯 BRM5 PvE"
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.TextSize = 16
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
+-- Icon
+local Icon = Instance.new("TextLabel")
+Icon.Parent = TopBar
+Icon.BackgroundTransparency = 1
+Icon.Position = UDim2.new(0, 12, 0, 0)
+Icon.Size = UDim2.new(0, 30, 1, 0)
+Icon.Font = Enum.Font.GothamBold
+Icon.Text = "🎯"
+Icon.TextColor3 = Color3.fromRGB(0, 255, 255)
+Icon.TextSize = 20
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Parent = TopBar
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 45, 0, 0)
+Title.Size = UDim2.new(0, 150, 1, 0)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "BRM5 PvE"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Status indicator
+local StatusDot = Instance.new("Frame")
+StatusDot.Parent = TopBar
+StatusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+StatusDot.BackgroundTransparency = 0
+StatusDot.BorderSizePixel = 0
+StatusDot.Position = UDim2.new(1, -50, 0.5, -4)
+StatusDot.Size = UDim2.new(0, 8, 0, 8)
+local DotCorner = Instance.new("UICorner")
+DotCorner.Parent = StatusDot
+DotCorner.CornerRadius = UDim.new(1, 0)
+
+-- Status Text
+local StatusText = Instance.new("TextLabel")
+StatusText.Parent = TopBar
+StatusText.BackgroundTransparency = 1
+StatusText.Position = UDim2.new(1, -40, 0, 0)
+StatusText.Size = UDim2.new(0, 35, 1, 0)
+StatusText.Font = Enum.Font.Gotham
+StatusText.Text = "ON"
+StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
+StatusText.TextSize = 11
+StatusText.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Minimize Button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Parent = TitleBar
-MinBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-MinBtn.BackgroundTransparency = 0
+MinBtn.Parent = TopBar
+MinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.BackgroundTransparency = 0.9
 MinBtn.BorderSizePixel = 0
-MinBtn.Position = UDim2.new(1, -35, 0.5, -12)
-MinBtn.Size = UDim2.new(0, 25, 0, 24)
+MinBtn.Position = UDim2.new(1, -80, 0.5, -10)
+MinBtn.Size = UDim2.new(0, 20, 0, 20)
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.Text = "─"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.TextSize = 18
-
+MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+MinBtn.TextSize = 16
 local MinCorner = Instance.new("UICorner")
 MinCorner.Parent = MinBtn
-MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.CornerRadius = UDim.new(0, 4)
 
 -- Close Button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = TitleBar
-CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-CloseBtn.BackgroundTransparency = 0
+CloseBtn.Parent = TopBar
+CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.BackgroundTransparency = 0.9
 CloseBtn.BorderSizePixel = 0
-CloseBtn.Position = UDim2.new(1, -65, 0.5, -12)
-CloseBtn.Size = UDim2.new(0, 25, 0, 24)
+CloseBtn.Position = UDim2.new(1, -35, 0.5, -10)
+CloseBtn.Size = UDim2.new(0, 20, 0, 20)
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
 CloseBtn.TextSize = 14
-
 local CloseCorner = Instance.new("UICorner")
 CloseCorner.Parent = CloseBtn
-CloseCorner.CornerRadius = UDim.new(0, 5)
+CloseCorner.CornerRadius = UDim.new(0, 4)
 
 -- ============================================
--- CONTENT FRAME
+-- CONTENT AREA (Scrollable)
 -- ============================================
 local Content = Instance.new("ScrollingFrame")
 Content.Parent = MainFrame
-Content.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
-Content.BackgroundTransparency = 0
+Content.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+Content.BackgroundTransparency = 0.5
 Content.BorderSizePixel = 0
-Content.Position = UDim2.new(0, 0, 0, 40)
-Content.Size = UDim2.new(1, 0, 1, -40)
+Content.Position = UDim2.new(0, 0, 0, 45)
+Content.Size = UDim2.new(1, 0, 1, -45)
 Content.CanvasSize = UDim2.new(0, 0, 0, 0)
-Content.ScrollBarThickness = 4
-Content.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 150)
+Content.ScrollBarThickness = 3
+Content.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 180)
+Content.ScrollBarImageTransparency = 0.5
 
 local ContentCorner = Instance.new("UICorner")
 ContentCorner.Parent = Content
-ContentCorner.CornerRadius = UDim.new(0, 10)
+ContentCorner.CornerRadius = UDim.new(0, 12)
 
 -- ============================================
 -- STATE
@@ -138,53 +190,71 @@ local SpeedEnabled = true
 local NoFogEnabled = false
 local InfiniteHunger = false
 local InfiniteThirst = false
+local ShowMenu = true
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
 local isInGame = false
 local isMinimized = false
-
--- ============================================
--- UI HELPERS
--- ============================================
 local yPos = 10
 
-local function AddLabel(text, color, size)
-    local label = Instance.new("TextLabel")
-    label.Parent = Content
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, yPos)
-    label.Size = UDim2.new(1, -20, 0, 25)
-    label.Font = Enum.Font.GothamBold
-    label.Text = text
-    label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
-    label.TextSize = size or 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    yPos = yPos + 30
-    return label
+-- ============================================
+-- OVERLAY UI HELPERS
+-- ============================================
+local function AddSection(text)
+    local section = Instance.new("TextLabel")
+    section.Parent = Content
+    section.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+    section.BackgroundTransparency = 0.15
+    section.BorderSizePixel = 0
+    section.Position = UDim2.new(0, 10, 0, yPos)
+    section.Size = UDim2.new(1, -20, 0, 28)
+    section.Font = Enum.Font.GothamBold
+    section.Text = "▸ " .. text
+    section.TextColor3 = Color3.fromRGB(0, 255, 255)
+    section.TextSize = 13
+    section.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local SecCorner = Instance.new("UICorner")
+    SecCorner.Parent = section
+    SecCorner.CornerRadius = UDim.new(0, 4)
+    
+    yPos = yPos + 32
+    return section
 end
 
-local function AddToggle(text, default, callback)
+local function AddOverlayToggle(text, default, callback)
     local frame = Instance.new("Frame")
     frame.Parent = Content
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
-    frame.BackgroundTransparency = 0
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    frame.BackgroundTransparency = 0.6
     frame.BorderSizePixel = 0
     frame.Position = UDim2.new(0, 10, 0, yPos)
-    frame.Size = UDim2.new(1, -20, 0, 35)
+    frame.Size = UDim2.new(1, -20, 0, 32)
     
     local FrameCorner = Instance.new("UICorner")
     FrameCorner.Parent = frame
-    FrameCorner.CornerRadius = UDim.new(0, 6)
+    FrameCorner.CornerRadius = UDim.new(0, 4)
+    
+    -- Icon
+    local iconLabel = Instance.new("TextLabel")
+    iconLabel.Parent = frame
+    iconLabel.BackgroundTransparency = 1
+    iconLabel.Position = UDim2.new(0, 8, 0, 0)
+    iconLabel.Size = UDim2.new(0, 20, 1, 0)
+    iconLabel.Font = Enum.Font.Gotham
+    iconLabel.Text = "◆"
+    iconLabel.TextColor3 = Color3.fromRGB(0, 200, 200)
+    iconLabel.TextSize = 10
     
     local label = Instance.new("TextLabel")
     label.Parent = frame
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.Size = UDim2.new(0, 250, 1, 0)
+    label.Position = UDim2.new(0, 30, 0, 0)
+    label.Size = UDim2.new(0, 200, 1, 0)
     label.Font = Enum.Font.Gotham
     label.Text = text
-    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextColor3 = Color3.fromRGB(220, 220, 240)
     label.TextSize = 13
     label.TextXAlignment = Enum.TextXAlignment.Left
     
@@ -192,96 +262,84 @@ local function AddToggle(text, default, callback)
     
     local toggleBtn = Instance.new("TextButton")
     toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(60, 60, 80)
+    toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 50, 70)
     toggleBtn.BackgroundTransparency = 0
     toggleBtn.BorderSizePixel = 0
-    toggleBtn.Position = UDim2.new(1, -45, 0.5, -12)
-    toggleBtn.Size = UDim2.new(0, 35, 0, 24)
+    toggleBtn.Position = UDim2.new(1, -40, 0.5, -10)
+    toggleBtn.Size = UDim2.new(0, 30, 0, 20)
     toggleBtn.Font = Enum.Font.GothamBold
     toggleBtn.Text = state and "ON" or "OFF"
     toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 11
+    toggleBtn.TextSize = 10
     
     local ToggleCorner = Instance.new("UICorner")
     ToggleCorner.Parent = toggleBtn
-    ToggleCorner.CornerRadius = UDim.new(0, 4)
+    ToggleCorner.CornerRadius = UDim.new(0, 3)
     
     toggleBtn.MouseButton1Click:Connect(function()
         state = not state
-        toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(60, 60, 80)
+        toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 50, 70)
         toggleBtn.Text = state and "ON" or "OFF"
         if callback then callback(state) end
     end)
     
-    yPos = yPos + 42
+    yPos = yPos + 36
     return frame
 end
 
-local function AddSmallLabel(text, color)
+local function AddOverlayLabel(text, color, size)
     local label = Instance.new("TextLabel")
     label.Parent = Content
     label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 20, 0, yPos)
-    label.Size = UDim2.new(1, -30, 0, 20)
+    label.Position = UDim2.new(0, 15, 0, yPos)
+    label.Size = UDim2.new(1, -30, 0, 18)
     label.Font = Enum.Font.Gotham
     label.Text = text
-    label.TextColor3 = color or Color3.fromRGB(180, 180, 200)
-    label.TextSize = 11
+    label.TextColor3 = color or Color3.fromRGB(160, 160, 180)
+    label.TextSize = size or 11
     label.TextXAlignment = Enum.TextXAlignment.Left
-    yPos = yPos + 22
+    yPos = yPos + 20
     return label
 end
 
-local function AddDivider()
+local function AddOverlayDivider()
     local divider = Instance.new("Frame")
     divider.Parent = Content
-    divider.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-    divider.BackgroundTransparency = 0.5
+    divider.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+    divider.BackgroundTransparency = 0.8
     divider.BorderSizePixel = 0
-    divider.Position = UDim2.new(0, 10, 0, yPos)
-    divider.Size = UDim2.new(1, -20, 0, 1)
-    yPos = yPos + 12
+    divider.Position = UDim2.new(0, 15, 0, yPos)
+    divider.Size = UDim2.new(1, -30, 0, 1)
+    yPos = yPos + 10
     return divider
 end
 
 -- ============================================
--- BUILD UI
+-- BUILD OVERLAY UI
 -- ============================================
-AddLabel("═══════ FEATURES ═══════", Color3.fromRGB(0, 200, 200), 14)
-
-AddDivider()
-AddLabel("⚡ Speed", Color3.fromRGB(100, 255, 100))
-AddToggle("Enable Speed Boost", true, function(s)
+AddSection("⚡ SPEED")
+AddOverlayToggle("Speed Boost", true, function(s)
     SpeedEnabled = s
-    if s then
-        applySpeed()
-    else
-        pcall(function()
-            if player.Character then
-                local humanoid = player.Character:FindFirstChild("Humanoid")
-                if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
-            end
-        end)
-    end
+    if s then applySpeed() end
 end)
-AddSmallLabel("Speed: " .. PERMANENT_SPEED .. " (Auto-applies)", Color3.fromRGB(150, 255, 150))
+AddOverlayLabel("Speed: " .. PERMANENT_SPEED .. " (Auto-applies)", Color3.fromRGB(150, 255, 150))
 
-AddDivider()
-AddLabel("👁️ ESP", Color3.fromRGB(100, 200, 255))
-AddToggle("Player ESP", false, function(s)
+AddOverlayDivider()
+AddSection("👁️ ESP")
+AddOverlayToggle("Player ESP", false, function(s)
     ESPEnabled = s
     updateESPVisibility()
 end)
-AddToggle("NPC/Zombie ESP", false, function(s)
+AddOverlayToggle("NPC/Zombie ESP", false, function(s)
     NPCESPEnabled = s
     if s then scanForNPCs() end
     updateESPVisibility()
 end)
-AddSmallLabel("Shows players and zombies through walls", Color3.fromRGB(180, 180, 200))
+AddOverlayLabel("Shows players & zombies through walls", Color3.fromRGB(160, 160, 180))
 
-AddDivider()
-AddLabel("🌍 Environment", Color3.fromRGB(255, 200, 100))
-AddToggle("No Fog", false, function(s)
+AddOverlayDivider()
+AddSection("🌍 ENVIRONMENT")
+AddOverlayToggle("No Fog", false, function(s)
     NoFogEnabled = s
     if s then
         pcall(function()
@@ -296,22 +354,67 @@ AddToggle("No Fog", false, function(s)
     end
 end)
 
-AddDivider()
-AddLabel("🍖 Survival", Color3.fromRGB(255, 150, 150))
-AddToggle("Infinite Hunger", false, function(s)
+AddOverlayDivider()
+AddSection("🍖 SURVIVAL")
+AddOverlayToggle("Infinite Hunger", false, function(s)
     InfiniteHunger = s
     if s then startHungerLoop() end
 end)
-AddToggle("Infinite Thirst", false, function(s)
+AddOverlayToggle("Infinite Thirst", false, function(s)
     InfiniteThirst = s
     if s then startThirstLoop() end
 end)
 
-AddDivider()
-AddLabel("Made by Maryyy ❤️", Color3.fromRGB(0, 200, 200), 12)
+AddOverlayDivider()
+AddOverlayLabel("✦ Made by Maryyy", Color3.fromRGB(0, 200, 200), 12)
 
--- Update canvas size
-Content.CanvasSize = UDim2.new(0, 0, 0, yPos + 20)
+-- Update canvas
+Content.CanvasSize = UDim2.new(0, 0, 0, yPos + 30)
+
+-- ============================================
+-- TOGGLE MENU (Click icon to show/hide)
+-- ============================================
+local MenuToggleBtn = Instance.new("TextButton")
+MenuToggleBtn.Parent = ScreenGui
+MenuToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
+MenuToggleBtn.BackgroundTransparency = 0.3
+MenuToggleBtn.BorderSizePixel = 0
+MenuToggleBtn.Position = UDim2.new(0.01, 0, 0.5, 0)
+MenuToggleBtn.Size = UDim2.new(0, 40, 0, 40)
+MenuToggleBtn.Font = Enum.Font.GothamBold
+MenuToggleBtn.Text = "🎯"
+MenuToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MenuToggleBtn.TextSize = 22
+MenuToggleBtn.ZIndex = 20
+local MenuCorner = Instance.new("UICorner")
+MenuCorner.Parent = MenuToggleBtn
+MenuCorner.CornerRadius = UDim.new(1, 0)
+
+-- Hover effect
+MenuToggleBtn.MouseEnter:Connect(function()
+    TweenService:Create(MenuToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
+end)
+MenuToggleBtn.MouseLeave:Connect(function()
+    TweenService:Create(MenuToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
+end)
+
+MenuToggleBtn.MouseButton1Click:Connect(function()
+    ShowMenu = not ShowMenu
+    if ShowMenu then
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+            Position = UDim2.new(0.5, -180, 0.5, -180),
+            BackgroundTransparency = 0.7
+        }):Play()
+        MainFrame.Visible = true
+    else
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+            Position = UDim2.new(0.5, -180, 0.5, -180),
+            BackgroundTransparency = 1
+        }):Play()
+        task.wait(0.3)
+        MainFrame.Visible = false
+    end
+end)
 
 -- ============================================
 -- DRAGGING
@@ -319,15 +422,15 @@ Content.CanvasSize = UDim2.new(0, 0, 0, yPos + 20)
 local dragging = false
 local dragInput, dragStart, startPos
 
-TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+TopBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and input.Position.X > 50 then
         dragging = true
         dragStart = input.Position
         startPos = MainFrame.Position
     end
 end)
 
-TitleBar.InputEnded:Connect(function(input)
+TopBar.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = false
     end
@@ -357,11 +460,18 @@ end)
 local function ToggleMinimize()
     isMinimized = not isMinimized
     if isMinimized then
-        MainFrame:TweenSize(UDim2.new(0, 400, 0, 40), "Out", "Quad", 0.3, true)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+            Size = UDim2.new(0, 360, 0, 45),
+            BackgroundTransparency = 0.5
+        }):Play()
+        Content.Visible = false
     else
-        MainFrame:TweenSize(UDim2.new(0, 400, 0, 300), "Out", "Quad", 0.3, true)
+        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+            Size = UDim2.new(0, 360, 0, 360),
+            BackgroundTransparency = 0.7
+        }):Play()
         task.wait(0.3)
-        TitleText.Text = "🎯 BRM5 PvE"
+        Content.Visible = true
     end
 end
 
@@ -370,7 +480,6 @@ MinBtn.MouseButton1Click:Connect(ToggleMinimize)
 CloseBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     pcall(function()
-        -- Clean up ESP
         for _, obj in pairs(Workspace:GetChildren()) do
             if obj:IsA("Model") then
                 for _, child in pairs(obj:GetChildren()) do
@@ -380,12 +489,10 @@ CloseBtn.MouseButton1Click:Connect(function()
                 end
             end
         end
-        -- Reset speed
         if player.Character then
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
         end
-        -- Reset fog
         Lighting.FogEnd = 1000
         Lighting.FogStart = 0
     end)
@@ -394,7 +501,7 @@ CloseBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- ESP FUNCTIONS
+-- ESP FUNCTIONS (Same as before)
 -- ============================================
 local ESPObjects = {}
 local NPCEntities = {}
@@ -404,7 +511,7 @@ local function isNPC(character)
     if not character:FindFirstChild("Humanoid") then return false end
     if Players:GetPlayerFromCharacter(character) then return false end
     
-    local npcNames = {"NPC", "Zombie", "Enemy", "Bot", "Monster", "Walker", "Runner"}
+    local npcNames = {"NPC", "Zombie", "Enemy", "Bot", "Monster", "Walker", "Runner", "Creep"}
     for _, name in ipairs(npcNames) do
         if string.find(string.lower(character.Name), string.lower(name)) then
             return true
@@ -425,13 +532,13 @@ local function createESP(character, isNPC)
     
     if not humanoid or not rootPart then return end
     
-    local color = isNPC and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 200, 255)
+    local color = isNPC and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 200, 255)
     
     local highlight = Instance.new("Highlight")
     highlight.FillColor = color
     highlight.OutlineColor = Color3.new(1, 1, 1)
-    highlight.FillTransparency = 0.3
-    highlight.OutlineTransparency = 0
+    highlight.FillTransparency = 0.25
+    highlight.OutlineTransparency = 0.2
     highlight.Enabled = ESPEnabled
     highlight.Parent = character
     
@@ -735,6 +842,6 @@ isInGame = true
 applySpeed()
 trackPlayers()
 
-print("✅ BRM5 PvE Simple GUI Loaded!")
+print("✅ BRM5 PvE Overlay Loaded!")
+print("   Click 🎯 icon to toggle menu")
 print("   Features: Speed | ESP | No Fog | Survival")
-print("   Click '─' to minimize | '✕' to close")

@@ -1,189 +1,60 @@
 -- ============================================
--- BRM5 PvE v1 - OVERLAY GUI (FIXED NO FOG)
+-- BRM5 PvE v1 - KAVO UI VERSION
+-- NPC DETECTION + ADVANCED ESP
+-- Modern Dark Theme
 -- ============================================
+
+-- Load Kavo UI Library
+local KavoUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Kaveen-LK/UI-Libraries/main/Kavo%20UI%20Library.lua"))()
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
+local Teams = game:GetService("Teams")
 
 local player = Players.LocalPlayer
-
--- ============================================
--- CREATE OVERLAY GUI
--- ============================================
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "BRM5_Overlay"
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- ============================================
--- MAIN OVERLAY FRAME
--- ============================================
-local MainFrame = Instance.new("Frame")
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-MainFrame.BackgroundTransparency = 0.7
-MainFrame.BorderSizePixel = 0
-MainFrame.Position = UDim2.new(0.5, -180, 0.5, -180)
-MainFrame.Size = UDim2.new(0, 360, 0, 360)
-MainFrame.ClipsDescendants = true
-MainFrame.ZIndex = 10
-
-local Corner = Instance.new("UICorner")
-Corner.Parent = MainFrame
-Corner.CornerRadius = UDim.new(0, 12)
-
--- Border glow
-local Border = Instance.new("Frame")
-Border.Parent = MainFrame
-Border.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-Border.BackgroundTransparency = 0
-Border.BorderSizePixel = 0
-Border.Size = UDim2.new(1, 0, 0, 2)
-Border.Position = UDim2.new(0, 0, 0, 0)
-
-local Border2 = Instance.new("Frame")
-Border2.Parent = MainFrame
-Border2.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-Border2.BackgroundTransparency = 0
-Border2.BorderSizePixel = 0
-Border2.Size = UDim2.new(1, 0, 0, 2)
-Border2.Position = UDim2.new(0, 0, 1, -2)
-
--- ============================================
--- TOP BAR
--- ============================================
-local TopBar = Instance.new("Frame")
-TopBar.Parent = MainFrame
-TopBar.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-TopBar.BackgroundTransparency = 0.15
-TopBar.BorderSizePixel = 0
-TopBar.Size = UDim2.new(1, 0, 0, 45)
-
-local TopCorner = Instance.new("UICorner")
-TopCorner.Parent = TopBar
-TopCorner.CornerRadius = UDim.new(0, 12)
-
-local Icon = Instance.new("TextLabel")
-Icon.Parent = TopBar
-Icon.BackgroundTransparency = 1
-Icon.Position = UDim2.new(0, 12, 0, 0)
-Icon.Size = UDim2.new(0, 30, 1, 0)
-Icon.Font = Enum.Font.GothamBold
-Icon.Text = "🎯"
-Icon.TextColor3 = Color3.fromRGB(0, 255, 255)
-Icon.TextSize = 20
-
-local Title = Instance.new("TextLabel")
-Title.Parent = TopBar
-Title.BackgroundTransparency = 1
-Title.Position = UDim2.new(0, 45, 0, 0)
-Title.Size = UDim2.new(0, 150, 1, 0)
-Title.Font = Enum.Font.GothamBold
-Title.Text = "BRM5 PvE"
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 16
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local StatusDot = Instance.new("Frame")
-StatusDot.Parent = TopBar
-StatusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-StatusDot.BackgroundTransparency = 0
-StatusDot.BorderSizePixel = 0
-StatusDot.Position = UDim2.new(1, -50, 0.5, -4)
-StatusDot.Size = UDim2.new(0, 8, 0, 8)
-local DotCorner = Instance.new("UICorner")
-DotCorner.Parent = StatusDot
-DotCorner.CornerRadius = UDim.new(1, 0)
-
-local StatusText = Instance.new("TextLabel")
-StatusText.Parent = TopBar
-StatusText.BackgroundTransparency = 1
-StatusText.Position = UDim2.new(1, -40, 0, 0)
-StatusText.Size = UDim2.new(0, 35, 1, 0)
-StatusText.Font = Enum.Font.Gotham
-StatusText.Text = "ON"
-StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
-StatusText.TextSize = 11
-StatusText.TextXAlignment = Enum.TextXAlignment.Left
-
-local MinBtn = Instance.new("TextButton")
-MinBtn.Parent = TopBar
-MinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.BackgroundTransparency = 0.9
-MinBtn.BorderSizePixel = 0
-MinBtn.Position = UDim2.new(1, -80, 0.5, -10)
-MinBtn.Size = UDim2.new(0, 20, 0, 20)
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.Text = "─"
-MinBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-MinBtn.TextSize = 16
-local MinCorner = Instance.new("UICorner")
-MinCorner.Parent = MinBtn
-MinCorner.CornerRadius = UDim.new(0, 4)
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Parent = TopBar
-CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.BackgroundTransparency = 0.9
-CloseBtn.BorderSizePixel = 0
-CloseBtn.Position = UDim2.new(1, -35, 0.5, -10)
-CloseBtn.Size = UDim2.new(0, 20, 0, 20)
-CloseBtn.Font = Enum.Font.GothamBold
-CloseBtn.Text = "✕"
-CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-CloseBtn.TextSize = 14
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.Parent = CloseBtn
-CloseCorner.CornerRadius = UDim.new(0, 4)
-
--- ============================================
--- CONTENT AREA
--- ============================================
-local Content = Instance.new("ScrollingFrame")
-Content.Parent = MainFrame
-Content.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-Content.BackgroundTransparency = 0.5
-Content.BorderSizePixel = 0
-Content.Position = UDim2.new(0, 0, 0, 45)
-Content.Size = UDim2.new(1, 0, 1, -45)
-Content.CanvasSize = UDim2.new(0, 0, 0, 0)
-Content.ScrollBarThickness = 3
-Content.ScrollBarImageColor3 = Color3.fromRGB(0, 180, 180)
-Content.ScrollBarImageTransparency = 0.5
-
-local ContentCorner = Instance.new("UICorner")
-ContentCorner.Parent = Content
-ContentCorner.CornerRadius = UDim.new(0, 12)
 
 -- ============================================
 -- STATE
 -- ============================================
 local ScriptActive = true
-local ESPEnabled = false
-local NPCESPEnabled = false
-local SpeedEnabled = true
 local NoFogEnabled = false
-local InfiniteHunger = false
-local InfiniteThirst = false
-local ShowMenu = true
+local ESPEnabled = false
+local SpeedEnabled = true
+local InfiniteHungerEnabled = false
+local InfiniteThirstEnabled = false
+local NPCESPEnabled = false
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
+local MAX_HUNGER = 100
+local MAX_THIRST = 100
 local isInGame = false
-local isMinimized = false
-local yPos = 10
+
+-- ESP Configuration
+local ESPConfig = {
+    MaxDistance = 2000,
+    TextSize = 18,
+    Font = Enum.Font.GothamBold,
+    HighlightEnabled = true,
+    ShowHealth = true,
+    ShowDistance = true,
+    NPCMaxDistance = 1500,
+    NPCColor = Color3.fromRGB(255, 0, 0),
+}
+
+local ESPObjects = {}
+local NPCEntities = {}
 
 -- ============================================
--- FOG REMOVAL FUNCTIONS (FIXED)
+-- AGGRESSIVE FOG REMOVAL
 -- ============================================
 local function RemoveFog()
     pcall(function()
-        -- Method 1: Direct Lighting properties
+        -- Lighting properties
         Lighting.FogEnd = 999999
         Lighting.FogStart = 999999
         Lighting.Brightness = 2
@@ -192,39 +63,31 @@ local function RemoveFog()
         Lighting.Ambient = Color3.fromRGB(255, 255, 255)
         Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
         
-        -- Method 2: Remove all fog-related objects
+        -- Remove atmosphere
+        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+        if atmosphere then atmosphere:Destroy() end
+        
+        -- Remove blur effects
+        local blur = Lighting:FindFirstChildOfClass("BlurEffect")
+        if blur then blur:Destroy() end
+        
+        -- Remove fog scripts
         for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Atmosphere") or child:IsA("BlurEffect") or child:IsA("SunRaysEffect") then
-                child:Destroy()
-            end
-            if child:IsA("ColorCorrectionEffect") then
-                child:Destroy()
-            end
-        end
-        
-        -- Method 3: Check for fog in Workspace
-        for _, child in pairs(Workspace:GetChildren()) do
-            if child:IsA("Atmosphere") or child.Name:lower():find("fog") then
-                child:Destroy()
+            if child:IsA("Script") or child:IsA("LocalScript") then
+                local name = string.lower(child.Name)
+                if string.find(name, "fog") or string.find(name, "weather") then
+                    child:Destroy()
+                end
             end
         end
         
-        -- Method 4: Terrain fog
+        -- Terrain fog
         local terrain = Workspace:FindFirstChild("Terrain")
         if terrain then
             terrain.WaterWaveSize = 0
             terrain.WaterWaveSpeed = 0
             terrain.WaterReflectance = 0
             terrain.WaterTransparency = 1
-        end
-        
-        -- Method 5: Check for special fog scripts
-        for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Script") or child:IsA("LocalScript") then
-                if child.Name:lower():find("fog") or child.Name:lower():find("weather") then
-                    child:Destroy()
-                end
-            end
         end
     end)
 end
@@ -237,344 +100,147 @@ local function RestoreFog()
         Lighting.GlobalShadows = true
         Lighting.Ambient = Color3.fromRGB(127, 127, 127)
         Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
-        
-        -- Restore terrain
-        local terrain = Workspace:FindFirstChild("Terrain")
-        if terrain then
-            terrain.WaterWaveSize = 0.5
-            terrain.WaterWaveSpeed = 0.3
-            terrain.WaterReflectance = 0.2
-            terrain.WaterTransparency = 0.6
-        end
     end)
 end
 
 -- ============================================
--- UI HELPERS
+-- CHECK IF PLAYER IS IN GAME
 -- ============================================
-local function AddSection(text)
-    local section = Instance.new("TextLabel")
-    section.Parent = Content
-    section.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-    section.BackgroundTransparency = 0.15
-    section.BorderSizePixel = 0
-    section.Position = UDim2.new(0, 10, 0, yPos)
-    section.Size = UDim2.new(1, -20, 0, 28)
-    section.Font = Enum.Font.GothamBold
-    section.Text = "▸ " .. text
-    section.TextColor3 = Color3.fromRGB(0, 255, 255)
-    section.TextSize = 13
-    section.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local SecCorner = Instance.new("UICorner")
-    SecCorner.Parent = section
-    SecCorner.CornerRadius = UDim.new(0, 4)
-    
-    yPos = yPos + 32
-    return section
-end
-
-local function AddOverlayToggle(text, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Parent = Content
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
-    frame.BackgroundTransparency = 0.6
-    frame.BorderSizePixel = 0
-    frame.Position = UDim2.new(0, 10, 0, yPos)
-    frame.Size = UDim2.new(1, -20, 0, 32)
-    
-    local FrameCorner = Instance.new("UICorner")
-    FrameCorner.Parent = frame
-    FrameCorner.CornerRadius = UDim.new(0, 4)
-    
-    local iconLabel = Instance.new("TextLabel")
-    iconLabel.Parent = frame
-    iconLabel.BackgroundTransparency = 1
-    iconLabel.Position = UDim2.new(0, 8, 0, 0)
-    iconLabel.Size = UDim2.new(0, 20, 1, 0)
-    iconLabel.Font = Enum.Font.Gotham
-    iconLabel.Text = "◆"
-    iconLabel.TextColor3 = Color3.fromRGB(0, 200, 200)
-    iconLabel.TextSize = 10
-    
-    local label = Instance.new("TextLabel")
-    label.Parent = frame
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 30, 0, 0)
-    label.Size = UDim2.new(0, 200, 1, 0)
-    label.Font = Enum.Font.Gotham
-    label.Text = text
-    label.TextColor3 = Color3.fromRGB(220, 220, 240)
-    label.TextSize = 13
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    
-    local state = default or false
-    
-    local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Parent = frame
-    toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 50, 70)
-    toggleBtn.BackgroundTransparency = 0
-    toggleBtn.BorderSizePixel = 0
-    toggleBtn.Position = UDim2.new(1, -40, 0.5, -10)
-    toggleBtn.Size = UDim2.new(0, 30, 0, 20)
-    toggleBtn.Font = Enum.Font.GothamBold
-    toggleBtn.Text = state and "ON" or "OFF"
-    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    toggleBtn.TextSize = 10
-    
-    local ToggleCorner = Instance.new("UICorner")
-    ToggleCorner.Parent = toggleBtn
-    ToggleCorner.CornerRadius = UDim.new(0, 3)
-    
-    toggleBtn.MouseButton1Click:Connect(function()
-        state = not state
-        toggleBtn.BackgroundColor3 = state and Color3.fromRGB(0, 200, 150) or Color3.fromRGB(50, 50, 70)
-        toggleBtn.Text = state and "ON" or "OFF"
-        if callback then callback(state) end
-    end)
-    
-    yPos = yPos + 36
-    return frame
-end
-
-local function AddOverlayLabel(text, color, size)
-    local label = Instance.new("TextLabel")
-    label.Parent = Content
-    label.BackgroundTransparency = 1
-    label.Position = UDim2.new(0, 15, 0, yPos)
-    label.Size = UDim2.new(1, -30, 0, 18)
-    label.Font = Enum.Font.Gotham
-    label.Text = text
-    label.TextColor3 = color or Color3.fromRGB(160, 160, 180)
-    label.TextSize = size or 11
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    yPos = yPos + 20
-    return label
-end
-
-local function AddOverlayDivider()
-    local divider = Instance.new("Frame")
-    divider.Parent = Content
-    divider.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-    divider.BackgroundTransparency = 0.8
-    divider.BorderSizePixel = 0
-    divider.Position = UDim2.new(0, 15, 0, yPos)
-    divider.Size = UDim2.new(1, -30, 0, 1)
-    yPos = yPos + 10
-    return divider
-end
-
--- ============================================
--- BUILD UI
--- ============================================
-AddSection("⚡ SPEED")
-AddOverlayToggle("Speed Boost", true, function(s)
-    SpeedEnabled = s
-    if s then applySpeed() end
-end)
-AddOverlayLabel("Speed: " .. PERMANENT_SPEED .. " (Auto-applies)", Color3.fromRGB(150, 255, 150))
-
-AddOverlayDivider()
-AddSection("👁️ ESP")
-AddOverlayToggle("Player ESP", false, function(s)
-    ESPEnabled = s
-    updateESPVisibility()
-end)
-AddOverlayToggle("NPC/Zombie ESP", false, function(s)
-    NPCESPEnabled = s
-    if s then scanForNPCs() end
-    updateESPVisibility()
-end)
-AddOverlayLabel("Shows players & zombies through walls", Color3.fromRGB(160, 160, 180))
-
-AddOverlayDivider()
-AddSection("🌍 ENVIRONMENT")
-AddOverlayToggle("🌫️ Remove Fog", false, function(s)
-    NoFogEnabled = s
-    if s then
-        RemoveFog()
-        -- Keep removing fog every few seconds to counter game resets
-        task.spawn(function()
-            while NoFogEnabled and ScriptActive do
-                RemoveFog()
-                task.wait(0.5)
-            end
-        end)
-    else
-        RestoreFog()
-    end
-end)
-AddOverlayLabel("Removes ALL fog from the game", Color3.fromRGB(100, 255, 200))
-AddOverlayLabel("Also increases brightness", Color3.fromRGB(160, 160, 180))
-
-AddOverlayDivider()
-AddSection("🍖 SURVIVAL")
-AddOverlayToggle("Infinite Hunger", false, function(s)
-    InfiniteHunger = s
-    if s then startHungerLoop() end
-end)
-AddOverlayToggle("Infinite Thirst", false, function(s)
-    InfiniteThirst = s
-    if s then startThirstLoop() end
-end)
-
-AddOverlayDivider()
-AddOverlayLabel("✦ Made by Maryyy", Color3.fromRGB(0, 200, 200), 12)
-
-Content.CanvasSize = UDim2.new(0, 0, 0, yPos + 30)
-
--- ============================================
--- TOGGLE MENU BUTTON
--- ============================================
-local MenuToggleBtn = Instance.new("TextButton")
-MenuToggleBtn.Parent = ScreenGui
-MenuToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-MenuToggleBtn.BackgroundTransparency = 0.3
-MenuToggleBtn.BorderSizePixel = 0
-MenuToggleBtn.Position = UDim2.new(0.01, 0, 0.5, 0)
-MenuToggleBtn.Size = UDim2.new(0, 40, 0, 40)
-MenuToggleBtn.Font = Enum.Font.GothamBold
-MenuToggleBtn.Text = "🎯"
-MenuToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MenuToggleBtn.TextSize = 22
-MenuToggleBtn.ZIndex = 20
-local MenuCorner = Instance.new("UICorner")
-MenuCorner.Parent = MenuToggleBtn
-MenuCorner.CornerRadius = UDim.new(1, 0)
-
-MenuToggleBtn.MouseEnter:Connect(function()
-    TweenService:Create(MenuToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
-end)
-MenuToggleBtn.MouseLeave:Connect(function()
-    TweenService:Create(MenuToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
-end)
-
-MenuToggleBtn.MouseButton1Click:Connect(function()
-    ShowMenu = not ShowMenu
-    if ShowMenu then
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.5, -180, 0.5, -180),
-            BackgroundTransparency = 0.7
-        }):Play()
-        MainFrame.Visible = true
-    else
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-            Position = UDim2.new(0.5, -180, 0.5, -180),
-            BackgroundTransparency = 1
-        }):Play()
-        task.wait(0.3)
-        MainFrame.Visible = false
-    end
-end)
-
--- ============================================
--- DRAGGING
--- ============================================
-local dragging = false
-local dragInput, dragStart, startPos
-
-TopBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and input.Position.X > 50 then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
-    end
-end)
-
-TopBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        local delta = input.Position - dragStart
-        MainFrame.Position = UDim2.new(
-            startPos.X.Scale,
-            startPos.X.Offset + delta.X,
-            startPos.Y.Scale,
-            startPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
-end)
-
--- ============================================
--- MINIMIZE / CLOSE
--- ============================================
-local function ToggleMinimize()
-    isMinimized = not isMinimized
-    if isMinimized then
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-            Size = UDim2.new(0, 360, 0, 45),
-            BackgroundTransparency = 0.5
-        }):Play()
-        Content.Visible = false
-    else
-        TweenService:Create(MainFrame, TweenInfo.new(0.3), {
-            Size = UDim2.new(0, 360, 0, 360),
-            BackgroundTransparency = 0.7
-        }):Play()
-        task.wait(0.3)
-        Content.Visible = true
-    end
-end
-
-MinBtn.MouseButton1Click:Connect(ToggleMinimize)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScriptActive = false
+local function checkInGame()
     pcall(function()
-        for _, obj in pairs(Workspace:GetChildren()) do
-            if obj:IsA("Model") then
-                for _, child in pairs(obj:GetChildren()) do
-                    if child:IsA("Highlight") or child:IsA("BillboardGui") then
-                        child:Destroy()
-                    end
-                end
+        local char = player.Character
+        if char and char.Parent == Workspace and char:FindFirstChild("Humanoid") then
+            isInGame = true
+        else
+            isInGame = false
+        end
+    end)
+    return isInGame
+end
+
+-- ============================================
+-- GET TEAM COLOR
+-- ============================================
+local function getTeamColor(player)
+    if player.Team then
+        return player.Team.TeamColor.Color
+    end
+    return Color3.fromRGB(0, 200, 195)
+end
+
+-- ============================================
+-- DETECT IF ENTITY IS NPC
+-- ============================================
+local function isNPC(character)
+    if not character or not character:IsA("Model") then return false end
+    if not character:FindFirstChild("Humanoid") then return false end
+    
+    local owner = Players:GetPlayerFromCharacter(character)
+    if owner then return false end
+    
+    local npcIndicators = {
+        "NPC", "Zombie", "AI", "Enemy", "Bot", "Monster",
+        "Walker", "Runner", "Boss", "Spawn", "Creep"
+    }
+    
+    for _, indicator in ipairs(npcIndicators) do
+        if string.find(character.Name, indicator) then
+            return true
+        end
+    end
+    
+    -- Check attributes
+    if character:GetAttribute("NPC") or 
+       character:GetAttribute("Zombie") or 
+       character:GetAttribute("Enemy") then
+        return true
+    end
+    
+    return false
+end
+
+-- ============================================
+-- SPEED SYSTEM
+-- ============================================
+local function applySpeed()
+    if not SpeedEnabled or not isInGame then return end
+    pcall(function()
+        local char = player.Character
+        if char then
+            local humanoid = char:FindFirstChild("Humanoid")
+            if humanoid then
+                humanoid.WalkSpeed = PERMANENT_SPEED
             end
         end
-        if player.Character then
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
-        end
-        RestoreFog()
     end)
-    ScreenGui:Destroy()
-    print("✅ Script terminated")
-end)
+end
+
+-- ============================================
+-- HUNGER / THIRST LOOPS
+-- ============================================
+local function startHungerLoop()
+    task.spawn(function()
+        while InfiniteHungerEnabled and ScriptActive do
+            if isInGame then
+                pcall(function()
+                    local char = player.Character
+                    if char then
+                        for _, child in pairs(char:GetDescendants()) do
+                            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                                local name = string.lower(child.Name)
+                                if string.find(name, "hunger") or string.find(name, "food") then
+                                    child.Value = MAX_HUNGER
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+            task.wait(1)
+        end
+    end)
+end
+
+local function startThirstLoop()
+    task.spawn(function()
+        while InfiniteThirstEnabled and ScriptActive do
+            if isInGame then
+                pcall(function()
+                    local char = player.Character
+                    if char then
+                        for _, child in pairs(char:GetDescendants()) do
+                            if child:IsA("NumberValue") or child:IsA("IntValue") then
+                                local name = string.lower(child.Name)
+                                if string.find(name, "thirst") or string.find(name, "water") then
+                                    child.Value = MAX_THIRST
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+            task.wait(1)
+        end
+    end)
+end
 
 -- ============================================
 -- ESP FUNCTIONS
 -- ============================================
-local ESPObjects = {}
-local NPCEntities = {}
-
-local function isNPC(character)
-    if not character or not character:IsA("Model") then return false end
-    if not character:FindFirstChild("Humanoid") then return false end
-    if Players:GetPlayerFromCharacter(character) then return false end
+local function createNPCESP(character)
+    if not character or character:GetName() == "" then return end
+    if Players:GetPlayerFromCharacter(character) then return end
+    if not isNPC(character) then return end
     
-    local npcNames = {"NPC", "Zombie", "Enemy", "Bot", "Monster", "Walker", "Runner", "Creep"}
-    for _, name in ipairs(npcNames) do
-        if string.find(string.lower(character.Name), string.lower(name)) then
-            return true
-        end
+    local npcKey = tostring(character)
+    
+    if ESPObjects[npcKey] then
+        pcall(function()
+            if ESPObjects[npcKey].Billboard then ESPObjects[npcKey].Billboard:Destroy() end
+            if ESPObjects[npcKey].Highlight then ESPObjects[npcKey].Highlight:Destroy() end
+        end)
+        ESPObjects[npcKey] = nil
     end
-    return false
-end
-
-local function createESP(character, isNPC)
-    if not character then return end
-    
-    local key = tostring(character)
-    if ESPObjects[key] then return end
     
     local humanoid = character:FindFirstChild("Humanoid")
     local rootPart = character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Head")
@@ -582,136 +248,625 @@ local function createESP(character, isNPC)
     
     if not humanoid or not rootPart then return end
     
-    local color = isNPC and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 200, 255)
+    local npcColor = ESPConfig.NPCColor
     
-    local highlight = Instance.new("Highlight")
-    highlight.FillColor = color
-    highlight.OutlineColor = Color3.new(1, 1, 1)
-    highlight.FillTransparency = 0.25
-    highlight.OutlineTransparency = 0.2
-    highlight.Enabled = ESPEnabled
-    highlight.Parent = character
+    local highlight = nil
+    if ESPConfig.HighlightEnabled then
+        highlight = Instance.new("Highlight")
+        highlight.FillColor = npcColor
+        highlight.OutlineColor = Color3.new(1, 1, 1)
+        highlight.FillTransparency = 0.35
+        highlight.OutlineTransparency = 0
+        highlight.Enabled = ESPEnabled and NPCESPEnabled
+        highlight.Parent = character
+    end
     
     local billboard = Instance.new("BillboardGui")
     billboard.Adornee = head or rootPart
-    billboard.Size = UDim2.new(0, 150, 0, 50)
-    billboard.StudsOffset = head and Vector3.new(0, 2.5, 0) or Vector3.new(0, 2, 0)
+    billboard.Size = UDim2.new(0, 200, 0, 80)
+    billboard.StudsOffset = head and Vector3.new(0, 3, 0) or Vector3.new(0, 2, 0)
     billboard.AlwaysOnTop = true
-    billboard.Enabled = ESPEnabled
+    billboard.Enabled = ESPEnabled and NPCESPEnabled
     billboard.Parent = character
+    billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    billboard.ResetOnSpawn = false
     
-    local nameLabel = Instance.new("TextLabel", billboard)
+    local mainContainer = Instance.new("Frame", billboard)
+    mainContainer.Size = UDim2.new(1, 0, 1, 0)
+    mainContainer.BackgroundTransparency = 1
+    mainContainer.BorderSizePixel = 0
+    
+    local nameLabel = Instance.new("TextLabel", mainContainer)
     nameLabel.Size = UDim2.new(1, 0, 0, 16)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.Text = (isNPC and "🧟 " or "👤 ") .. character.Name
-    nameLabel.TextColor3 = color
-    nameLabel.TextSize = 14
-    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.Text = "🧟 " .. character.Name
+    nameLabel.TextColor3 = npcColor
+    nameLabel.TextSize = ESPConfig.TextSize
+    nameLabel.Font = ESPConfig.Font
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     
-    local healthBar = Instance.new("Frame", billboard)
-    healthBar.Size = UDim2.new(0.8, 0, 0, 6)
-    healthBar.Position = UDim2.new(0.1, 0, 0, 18)
-    healthBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    healthBar.BorderSizePixel = 0
+    local healthBarBg = Instance.new("Frame", mainContainer)
+    healthBarBg.Size = UDim2.new(0.9, 0, 0, 12)
+    healthBarBg.Position = UDim2.new(0.05, 0, 0, 18)
+    healthBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    healthBarBg.BorderSizePixel = 1
+    healthBarBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    local healthBgCorner = Instance.new("UICorner", healthBarBg)
+    healthBgCorner.CornerRadius = UDim.new(0, 2)
     
-    local healthFill = Instance.new("Frame", healthBar)
-    healthFill.Size = UDim2.new(1, 0, 1, 0)
-    healthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-    healthFill.BorderSizePixel = 0
+    local healthBarFill = Instance.new("Frame", healthBarBg)
+    healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+    healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    healthBarFill.BorderSizePixel = 0
+    local healthFillCorner = Instance.new("UICorner", healthBarFill)
+    healthFillCorner.CornerRadius = UDim.new(0, 2)
     
-    ESPObjects[key] = {
-        Highlight = highlight,
+    local healthLabel = Instance.new("TextLabel", mainContainer)
+    healthLabel.Size = UDim2.new(1, 0, 0, 12)
+    healthLabel.Position = UDim2.new(0, 0, 0, 20)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.Text = "HP: 100/100"
+    healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    healthLabel.TextSize = 10
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextXAlignment = Enum.TextXAlignment.Center
+    healthLabel.TextStrokeTransparency = 0.5
+    healthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    healthLabel.Visible = ESPConfig.ShowHealth
+    
+    local distanceLabel = Instance.new("TextLabel", mainContainer)
+    distanceLabel.Size = UDim2.new(1, 0, 0, 14)
+    distanceLabel.Position = UDim2.new(0, 0, 0, 62)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = "Distance: 0m"
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+    distanceLabel.TextSize = 11
+    distanceLabel.Font = Enum.Font.GothamBold
+    distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+    distanceLabel.TextStrokeTransparency = 0.5
+    distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    distanceLabel.Visible = ESPConfig.ShowDistance
+    
+    local typeLabel = Instance.new("TextLabel", mainContainer)
+    typeLabel.Size = UDim2.new(1, 0, 0, 12)
+    typeLabel.Position = UDim2.new(0, 0, 0, 48)
+    typeLabel.BackgroundTransparency = 1
+    typeLabel.Text = "NPC"
+    typeLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    typeLabel.TextSize = 10
+    typeLabel.Font = Enum.Font.GothamBold
+    typeLabel.TextXAlignment = Enum.TextXAlignment.Center
+    typeLabel.TextStrokeTransparency = 0.5
+    typeLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    
+    ESPObjects[npcKey] = {
         Billboard = billboard,
-        HealthFill = healthFill,
-        Character = character,
+        Highlight = highlight,
+        HealthBarFill = healthBarFill,
+        HealthLabel = healthLabel,
+        DistanceLabel = distanceLabel,
         Humanoid = humanoid,
         RootPart = rootPart,
-        IsNPC = isNPC
+        Character = character,
+        IsNPC = true
     }
     
-    if isNPC then
-        NPCEntities[key] = character
+    NPCEntities[npcKey] = character
+end
+
+local function createPlayerESP(player)
+    if player == Players.LocalPlayer then return end
+    
+    if ESPObjects[player.Name] then
+        pcall(function()
+            if ESPObjects[player.Name].Billboard then ESPObjects[player.Name].Billboard:Destroy() end
+            if ESPObjects[player.Name].Highlight then ESPObjects[player.Name].Highlight:Destroy() end
+        end)
+        ESPObjects[player.Name] = nil
     end
+    
+    local function addESP(character)
+        if not character or not isInGame then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local head = character:FindFirstChild("Head")
+        
+        if not humanoid or not rootPart or not head then return end
+        
+        local teamColor = getTeamColor(player)
+        
+        local highlight = nil
+        if ESPConfig.HighlightEnabled then
+            highlight = Instance.new("Highlight")
+            highlight.FillColor = teamColor
+            highlight.OutlineColor = Color3.new(1, 1, 1)
+            highlight.FillTransparency = 0.3
+            highlight.OutlineTransparency = 0
+            highlight.Enabled = ESPEnabled
+            highlight.Parent = character
+        end
+        
+        local billboard = Instance.new("BillboardGui")
+        billboard.Adornee = head
+        billboard.Size = UDim2.new(0, 200, 0, 80)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Enabled = ESPEnabled
+        billboard.Parent = character
+        billboard.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        billboard.ResetOnSpawn = false
+        
+        local mainContainer = Instance.new("Frame", billboard)
+        mainContainer.Size = UDim2.new(1, 0, 1, 0)
+        mainContainer.BackgroundTransparency = 1
+        mainContainer.BorderSizePixel = 0
+        
+        local nameLabel = Instance.new("TextLabel", mainContainer)
+        nameLabel.Size = UDim2.new(1, 0, 0, 16)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = "👤 " .. player.Name
+        nameLabel.TextColor3 = teamColor
+        nameLabel.TextSize = ESPConfig.TextSize
+        nameLabel.Font = ESPConfig.Font
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Center
+        
+        local healthBarBg = Instance.new("Frame", mainContainer)
+        healthBarBg.Size = UDim2.new(0.9, 0, 0, 12)
+        healthBarBg.Position = UDim2.new(0.05, 0, 0, 18)
+        healthBarBg.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        healthBarBg.BorderSizePixel = 1
+        healthBarBg.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        local healthBgCorner = Instance.new("UICorner", healthBarBg)
+        healthBgCorner.CornerRadius = UDim.new(0, 2)
+        
+        local healthBarFill = Instance.new("Frame", healthBarBg)
+        healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+        healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        healthBarFill.BorderSizePixel = 0
+        local healthFillCorner = Instance.new("UICorner", healthBarFill)
+        healthFillCorner.CornerRadius = UDim.new(0, 2)
+        
+        local healthLabel = Instance.new("TextLabel", mainContainer)
+        healthLabel.Size = UDim2.new(1, 0, 0, 12)
+        healthLabel.Position = UDim2.new(0, 0, 0, 20)
+        healthLabel.BackgroundTransparency = 1
+        healthLabel.Text = "HP: 100/100"
+        healthLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        healthLabel.TextSize = 10
+        healthLabel.Font = Enum.Font.Gotham
+        healthLabel.TextXAlignment = Enum.TextXAlignment.Center
+        healthLabel.TextStrokeTransparency = 0.5
+        healthLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        healthLabel.Visible = ESPConfig.ShowHealth
+        
+        local distanceLabel = Instance.new("TextLabel", mainContainer)
+        distanceLabel.Size = UDim2.new(1, 0, 0, 14)
+        distanceLabel.Position = UDim2.new(0, 0, 0, 62)
+        distanceLabel.BackgroundTransparency = 1
+        distanceLabel.Text = "Distance: 0m"
+        distanceLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+        distanceLabel.TextSize = 11
+        distanceLabel.Font = Enum.Font.GothamBold
+        distanceLabel.TextXAlignment = Enum.TextXAlignment.Center
+        distanceLabel.TextStrokeTransparency = 0.5
+        distanceLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        distanceLabel.Visible = ESPConfig.ShowDistance
+        
+        ESPObjects[player.Name] = {
+            Billboard = billboard,
+            Highlight = highlight,
+            HealthBarFill = healthBarFill,
+            HealthLabel = healthLabel,
+            DistanceLabel = distanceLabel,
+            Humanoid = humanoid,
+            RootPart = rootPart,
+            Character = character,
+            IsNPC = false
+        }
+    end
+    
+    if player.Character then
+        addESP(player.Character)
+    end
+    
+    player.CharacterAdded:Connect(function(character)
+        task.wait(0.5)
+        if isInGame then
+            addESP(character)
+        end
+    end)
 end
 
 local function scanForNPCs()
-    if not NPCESPEnabled then return end
+    if not isInGame or not (ESPEnabled and NPCESPEnabled) then
+        for key, espData in pairs(ESPObjects) do
+            if espData.IsNPC then
+                if espData.Billboard then espData.Billboard:Destroy() end
+                if espData.Highlight then espData.Highlight:Destroy() end
+                ESPObjects[key] = nil
+                NPCEntities[key] = nil
+            end
+        end
+        return
+    end
     
     for _, obj in pairs(Workspace:GetChildren()) do
         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-            if isNPC(obj) then
+            local player = Players:GetPlayerFromCharacter(obj)
+            if not player and isNPC(obj) then
                 local key = tostring(obj)
                 if not ESPObjects[key] then
-                    createESP(obj, true)
+                    createNPCESP(obj)
                 end
             end
         end
     end
-end
-
-local function updateESPVisibility()
-    local enabled = ESPEnabled
-    for _, espData in pairs(ESPObjects) do
-        if espData.Highlight then
-            espData.Highlight.Enabled = enabled and (not espData.IsNPC or NPCESPEnabled)
-        end
-        if espData.Billboard then
-            espData.Billboard.Enabled = enabled and (not espData.IsNPC or NPCESPEnabled)
+    
+    for key, npc in pairs(NPCEntities) do
+        if not npc or not npc.Parent then
+            if ESPObjects[key] then
+                if ESPObjects[key].Billboard then ESPObjects[key].Billboard:Destroy() end
+                if ESPObjects[key].Highlight then ESPObjects[key].Highlight:Destroy() end
+                ESPObjects[key] = nil
+            end
+            NPCEntities[key] = nil
         end
     end
 end
 
 local function updateESP()
-    if not ESPEnabled then
-        updateESPVisibility()
+    if not isInGame or not ESPEnabled then
+        for _, espData in pairs(ESPObjects) do
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+        end
         return
     end
     
-    local localRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    local localChar = Players.LocalPlayer.Character
+    local localRoot = localChar and localChar:FindFirstChild("HumanoidRootPart")
     if not localRoot then return end
     
     for key, espData in pairs(ESPObjects) do
         if not espData or not espData.Character then continue end
         
-        local char = espData.Character
-        if not char or char.Parent ~= Workspace then
+        local character = espData.Character
+        if not character or character.Parent ~= Workspace then
             if espData.Highlight then espData.Highlight.Enabled = false end
             if espData.Billboard then espData.Billboard.Enabled = false end
             continue
         end
         
-        local rootPart = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChild("Head")
-        local humanoid = char:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChild("Humanoid")
+        local head = character:FindFirstChild("Head")
         
-        if not rootPart or not humanoid then continue end
+        if not rootPart or not humanoid then
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
+            continue
+        end
         
         local dist = (localRoot.Position - rootPart.Position).Magnitude
-        local inRange = dist <= (espData.IsNPC and 1500 or 2000)
+        local maxDist = espData.IsNPC and ESPConfig.NPCMaxDistance or ESPConfig.MaxDistance
+        local isInRange = dist <= maxDist
         
-        if espData.Highlight then
-            espData.Highlight.Enabled = inRange
-        end
-        if espData.Billboard then
-            espData.Billboard.Enabled = inRange
-        end
+        local showESP = isInRange and (espData.IsNPC and NPCESPEnabled or true)
         
-        if espData.HealthFill and humanoid then
-            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-            espData.HealthFill.Size = UDim2.new(healthPercent, 0, 1, 0)
-            if healthPercent > 0.5 then
-                espData.HealthFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            elseif healthPercent > 0.25 then
-                espData.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
-            else
-                espData.HealthFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        if showESP then
+            if espData.Highlight then
+                espData.Highlight.Enabled = true
+                espData.Highlight.Parent = character
             end
+            if espData.Billboard then
+                espData.Billboard.Enabled = true
+                espData.Billboard.Adornee = head or rootPart
+            end
+            
+            local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+            if espData.HealthBarFill then
+                espData.HealthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+                if healthPercent > 0.5 then
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+                elseif healthPercent > 0.25 then
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    espData.HealthBarFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+            
+            if espData.HealthLabel then
+                espData.HealthLabel.Text = "HP: " .. math.floor(humanoid.Health) .. "/" .. math.floor(humanoid.MaxHealth)
+            end
+            
+            if espData.DistanceLabel then
+                local distance = math.floor(dist)
+                espData.DistanceLabel.Text = "Distance: " .. distance .. "m"
+                if distance < 50 then
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif distance < 150 then
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    espData.DistanceLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+            end
+            
+            if not espData.IsNPC then
+                local player = Players:GetPlayerFromCharacter(character)
+                if player then
+                    local teamColor = getTeamColor(player)
+                    if espData.Highlight then
+                        espData.Highlight.FillColor = teamColor
+                    end
+                    if espData.NameLabel then
+                        espData.NameLabel.TextColor3 = teamColor
+                    end
+                end
+            end
+        else
+            if espData.Highlight then espData.Highlight.Enabled = false end
+            if espData.Billboard then espData.Billboard.Enabled = false end
         end
     end
 end
+
+-- ============================================
+-- CREATE KAVO UI
+-- ============================================
+local Window = KavoUI:CreateWindow({
+    Name = "BRM5 PvE v1",
+    Icon = "🏹",
+    LoadingTitle = "Loading BRM5 PvE...",
+    LoadingSubtitle = "by Maryyy",
+    Theme = KavoUI.Themes.Dark,
+    Configuration = {
+        {
+            Name = "Speed Tab",
+            Callback = function()
+                -- Auto-select speed tab
+            end
+        }
+    }
+})
+
+-- ============================================
+-- SPEED TAB
+-- ============================================
+local SpeedTab = Window:CreateTab({
+    Name = "Speed",
+    Icon = "🏃"
+})
+
+local SpeedSection = SpeedTab:CreateSection({
+    Name = "Speed Settings"
+})
+
+SpeedSection:CreateToggle({
+    Name = "⚡ Speed Boost",
+    CurrentValue = true,
+    Callback = function(Value)
+        SpeedEnabled = Value
+        if not Value then
+            pcall(function()
+                if player.Character then
+                    local humanoid = player.Character:FindFirstChild("Humanoid")
+                    if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
+                end
+            end)
+        end
+    end
+})
+
+SpeedSection:CreateLabel({
+    Name = "Speed: " .. PERMANENT_SPEED .. " (Always On)"
+})
+
+SpeedSection:CreateLabel({
+    Name = "Default: " .. DEFAULT_SPEED
+})
+
+SpeedSection:CreateLabel({
+    Name = "✅ Auto-applies on respawn"
+})
+
+-- ============================================
+-- SURVIVAL TAB
+-- ============================================
+local SurvivalTab = Window:CreateTab({
+    Name = "Survival",
+    Icon = "🍖"
+})
+
+local SurvivalSection = SurvivalTab:CreateSection({
+    Name = "Hunger & Thirst"
+})
+
+SurvivalSection:CreateToggle({
+    Name = "🍖 Infinite Hunger",
+    CurrentValue = false,
+    Callback = function(Value)
+        InfiniteHungerEnabled = Value
+        if Value then startHungerLoop() end
+    end
+})
+
+SurvivalSection:CreateLabel({
+    Name = "Keeps hunger at maximum (" .. MAX_HUNGER .. ")"
+})
+
+SurvivalSection:CreateToggle({
+    Name = "💧 Infinite Thirst",
+    CurrentValue = false,
+    Callback = function(Value)
+        InfiniteThirstEnabled = Value
+        if Value then startThirstLoop() end
+    end
+})
+
+SurvivalSection:CreateLabel({
+    Name = "Keeps thirst at maximum (" .. MAX_THIRST .. ")"
+})
+
+-- ============================================
+-- VISUALS TAB
+-- ============================================
+local VisualsTab = Window:CreateTab({
+    Name = "Visuals",
+    Icon = "👁️"
+})
+
+local VisualsSection = VisualsTab:CreateSection({
+    Name = "ESP Settings"
+})
+
+VisualsSection:CreateToggle({
+    Name = "👤 Player ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        ESPEnabled = Value
+        if isInGame then
+            for _, espData in pairs(ESPObjects) do
+                if not espData.IsNPC then
+                    if espData.Highlight then espData.Highlight.Enabled = Value end
+                    if espData.Billboard then espData.Billboard.Enabled = Value end
+                end
+            end
+        end
+    end
+})
+
+VisualsSection:CreateToggle({
+    Name = "🧟 NPC/Zombie ESP",
+    CurrentValue = false,
+    Callback = function(Value)
+        NPCESPEnabled = Value
+        if Value and isInGame then
+            scanForNPCs()
+        else
+            for key, espData in pairs(ESPObjects) do
+                if espData.IsNPC then
+                    if espData.Billboard then espData.Billboard:Destroy() end
+                    if espData.Highlight then espData.Highlight:Destroy() end
+                    ESPObjects[key] = nil
+                    NPCEntities[key] = nil
+                end
+            end
+        end
+    end
+})
+
+VisualsSection:CreateLabel({
+    Name = "🟢 Green = Close (<50 studs)"
+})
+
+VisualsSection:CreateLabel({
+    Name = "🟡 Yellow = Medium (<150 studs)"
+})
+
+VisualsSection:CreateLabel({
+    Name = "🔴 Red = Far (>150 studs)"
+})
+
+local EnvironmentSection = VisualsTab:CreateSection({
+    Name = "Environment"
+})
+
+EnvironmentSection:CreateToggle({
+    Name = "🌫️ Remove Fog",
+    CurrentValue = false,
+    Callback = function(Value)
+        NoFogEnabled = Value
+        if Value then
+            RemoveFog()
+            task.spawn(function()
+                while NoFogEnabled and ScriptActive do
+                    RemoveFog()
+                    task.wait(0.5)
+                end
+            end)
+        else
+            RestoreFog()
+        end
+    end
+})
+
+EnvironmentSection:CreateLabel({
+    Name = "Removes ALL fog from the game"
+})
+
+EnvironmentSection:CreateLabel({
+    Name = "Also increases brightness"
+})
+
+-- ============================================
+-- SETTINGS TAB
+-- ============================================
+local SettingsTab = Window:CreateTab({
+    Name = "Settings",
+    Icon = "⚙️"
+})
+
+local InfoSection = SettingsTab:CreateSection({
+    Name = "Info"
+})
+
+InfoSection:CreateLabel({
+    Name = "👤 Player: " .. player.Name
+})
+
+InfoSection:CreateLabel({
+    Name = "Features: Speed + ESP + No Fog"
+})
+
+InfoSection:CreateLabel({
+    Name = "NPC Detection: Auto-finds zombies"
+})
+
+local ControlSection = SettingsTab:CreateSection({
+    Name = "Controls"
+})
+
+ControlSection:CreateButton({
+    Name = "⚠️ Terminate Script",
+    Callback = function()
+        ScriptActive = false
+        pcall(function()
+            -- Clean up ESP
+            for _, obj in pairs(Workspace:GetChildren()) do
+                if obj:IsA("Model") then
+                    for _, child in pairs(obj:GetChildren()) do
+                        if child:IsA("Highlight") or child:IsA("BillboardGui") then
+                            child:Destroy()
+                        end
+                    end
+                end
+            end
+            -- Reset speed
+            if player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
+            end
+            -- Reset fog
+            RestoreFog()
+        end)
+        KavoUI:Destroy()
+        print("✅ Script terminated.")
+    end
+})
+
+ControlSection:CreateButton({
+    Name = "📋 Copy Player Info",
+    Callback = function()
+        setclipboard("Player: " .. player.Name .. " | ID: " .. player.UserId)
+    end
+})
 
 -- ============================================
 -- PLAYER TRACKING
@@ -723,7 +878,7 @@ local function trackPlayers()
             if char then
                 local key = tostring(char)
                 if not ESPObjects[key] and not isNPC(char) then
-                    createESP(char, false)
+                    createPlayerESP(plr)
                 end
             end
         end
@@ -735,7 +890,7 @@ Players.PlayerAdded:Connect(function(plr)
         plr.CharacterAdded:Connect(function(char)
             task.wait(0.5)
             if char and not isNPC(char) then
-                createESP(char, false)
+                createPlayerESP(plr)
             end
         end)
     end
@@ -755,92 +910,12 @@ Players.PlayerRemoving:Connect(function(plr)
 end)
 
 -- ============================================
--- SPEED SYSTEM
--- ============================================
-local function applySpeed()
-    if not SpeedEnabled or not isInGame then return end
-    pcall(function()
-        local char = player.Character
-        if char then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid then
-                humanoid.WalkSpeed = PERMANENT_SPEED
-            end
-        end
-    end)
-end
-
-player.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    isInGame = true
-    applySpeed()
-    trackPlayers()
-    if NoFogEnabled then RemoveFog() end
-end)
-
--- ============================================
--- HUNGER / THIRST LOOPS
--- ============================================
-local function startHungerLoop()
-    task.spawn(function()
-        while InfiniteHunger and ScriptActive do
-            if isInGame then
-                pcall(function()
-                    local char = player.Character
-                    if char then
-                        for _, child in pairs(char:GetDescendants()) do
-                            if (child:IsA("NumberValue") or child:IsA("IntValue")) then
-                                local name = string.lower(child.Name)
-                                if string.find(name, "hunger") or string.find(name, "food") then
-                                    child.Value = 100
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-            task.wait(1)
-        end
-    end)
-end
-
-local function startThirstLoop()
-    task.spawn(function()
-        while InfiniteThirst and ScriptActive do
-            if isInGame then
-                pcall(function()
-                    local char = player.Character
-                    if char then
-                        for _, child in pairs(char:GetDescendants()) do
-                            if (child:IsA("NumberValue") or child:IsA("IntValue")) then
-                                local name = string.lower(child.Name)
-                                if string.find(name, "thirst") or string.find(name, "water") then
-                                    child.Value = 100
-                                end
-                            end
-                        end
-                    end
-                end)
-            end
-            task.wait(1)
-        end
-    end)
-end
-
--- ============================================
 -- MAIN LOOPS
 -- ============================================
 -- Game state check
 task.spawn(function()
     while ScriptActive do
-        pcall(function()
-            local char = player.Character
-            if char and char.Parent == Workspace and char:FindFirstChild("Humanoid") then
-                isInGame = true
-            else
-                isInGame = false
-            end
-        end)
+        checkInGame()
         task.wait(1)
     end
 end)
@@ -885,16 +960,25 @@ task.spawn(function()
     end
 end)
 
+-- Character added
+player.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    isInGame = true
+    applySpeed()
+    trackPlayers()
+    if NoFogEnabled then RemoveFog() end
+end)
+
 -- ============================================
 -- INITIALIZATION
 -- ============================================
 task.wait(1)
-isInGame = true
+checkInGame()
 applySpeed()
 trackPlayers()
-RemoveFog() -- Remove fog by default
 
-print("✅ BRM5 PvE Overlay Loaded!")
-print("   Click 🎯 icon to toggle menu")
-print("   🌫️ Fog is removed by default")
-print("   Features: Speed | ESP | No Fog | Survival")
+print("✅ BRM5 PvE v1 Loaded! (Kavo UI)")
+print("   Speed: " .. PERMANENT_SPEED)
+print("   🧟 Survival: Infinite Hunger & Thirst")
+print("   👁️ Visuals: Player ESP + NPC ESP")
+print("   🌫️ No Fog: Aggressive removal")

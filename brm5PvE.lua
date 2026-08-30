@@ -3,11 +3,36 @@
 -- MODERN UI - Custom Teal Theme (#007F7C)
 -- ============================================
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "ModernUI"
-ScreenGui.Parent = game:GetService("CoreGui")
-ScreenGui.ResetOnSpawn = false
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- Wait for game to fully load
+task.wait(2)
+
+-- Create GUI with proper error handling
+local ScreenGui
+pcall(function()
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ModernUI"
+    ScreenGui.Parent = game:GetService("CoreGui")
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+end)
+
+-- If CoreGui fails, try PlayerGui
+if not ScreenGui or not ScreenGui.Parent then
+    pcall(function()
+        ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "ModernUI"
+        ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        ScreenGui.ResetOnSpawn = false
+    end)
+end
+
+-- If still no parent, create a new one
+if not ScreenGui or not ScreenGui.Parent then
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ModernUI"
+    ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    ScreenGui.ResetOnSpawn = false
+end
 
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -15,7 +40,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
 local Teams = game:GetService("Teams")
 local CollectionService = game:GetService("CollectionService")
 
@@ -24,15 +48,15 @@ local player = Players.LocalPlayer
 -- ============================================
 -- COLORS - TEAL THEME (#007F7C)
 -- ============================================
-local BACKGROUND = Color3.fromRGB(0, 127, 124)     -- #007F7C - Main teal
-local TOPBAR = Color3.fromRGB(0, 145, 142)         -- Slightly lighter teal
-local TABBG = Color3.fromRGB(0, 110, 107)          -- Darker teal for tabs
-local ELEMBG = Color3.fromRGB(0, 135, 132)         -- Element background
-local ELEMBGHOVER = Color3.fromRGB(20, 155, 152)   -- Element hover
-local ACCENT = Color3.fromRGB(0, 200, 195)         -- Bright teal accent
-local BORDER = Color3.fromRGB(0, 160, 157)         -- Border color
-local TEXT = Color3.fromRGB(255, 255, 255)         -- White text
-local TEXTDIM = Color3.fromRGB(190, 235, 233)      -- Dim text
+local BACKGROUND = Color3.fromRGB(0, 127, 124)
+local TOPBAR = Color3.fromRGB(0, 145, 142)
+local TABBG = Color3.fromRGB(0, 110, 107)
+local ELEMBG = Color3.fromRGB(0, 135, 132)
+local ELEMBGHOVER = Color3.fromRGB(20, 155, 152)
+local ACCENT = Color3.fromRGB(0, 200, 195)
+local BORDER = Color3.fromRGB(0, 160, 157)
+local TEXT = Color3.fromRGB(255, 255, 255)
+local TEXTDIM = Color3.fromRGB(190, 235, 233)
 
 -- ============================================
 -- STATE
@@ -40,7 +64,6 @@ local TEXTDIM = Color3.fromRGB(190, 235, 233)      -- Dim text
 local ScriptActive = true
 local NoFogEnabled = false
 local ESPEnabled = false
-local SpeedBoostEnabled = true
 local InfiniteHungerEnabled = false
 local InfiniteThirstEnabled = false
 local NPCESPEnabled = false
@@ -49,8 +72,6 @@ local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
 local MAX_HUNGER = 100
 local MAX_THIRST = 100
-local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
-local saniye, dakika, saat = 0, 0, 0
 local isInGame = false
 local isMinimized = false
 
@@ -68,6 +89,8 @@ local ESPConfig = {
 
 local ESPObjects = {}
 local NPCEntities = {}
+local MainFrame = nil
+local MinBar = nil
 
 -- ============================================
 -- CORNER ROUNDING FUNCTION
@@ -113,35 +136,17 @@ local function isNPC(character)
     local owner = Players:GetPlayerFromCharacter(character)
     if owner then return false end
     
-    -- Check name patterns
+    -- Check if it's an NPC by name
     local npcIndicators = {
         "NPC", "Zombie", "AI", "Enemy", "Bot", "Monster",
-        "Walker", "Runner", "Boss", "Spawn", "Creep"
+        "Walker", "Runner", "Boss", "Spawn", "Creep",
+        "zombie", "npc", "enemy"
     }
     
     for _, indicator in ipairs(npcIndicators) do
-        if character.Name:find(indicator) then
+        if string.find(string.lower(character.Name), string.lower(indicator)) then
             return true
         end
-    end
-    
-    -- Check tags
-    local tags = character:GetDescendants()
-    for _, tag in pairs(tags) do
-        if tag:IsA("StringValue") or tag:IsA("ObjectValue") then
-            local tagName = tag.Name:lower()
-            if tagName:find("npc") or tagName:find("zombie") or tagName:find("enemy") or tagName:find("ai") then
-                return true
-            end
-        end
-    end
-    
-    -- Check attributes
-    if character:GetAttribute("NPC") or 
-       character:GetAttribute("Zombie") or 
-       character:GetAttribute("Enemy") or
-       character:GetAttribute("AI") then
-        return true
     end
     
     return false
@@ -152,7 +157,7 @@ end
 -- ============================================
 local function createUI()
     -- MAIN FRAME
-    local MainFrame = Instance.new("Frame")
+    MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Parent = ScreenGui
     MainFrame.BackgroundColor3 = BACKGROUND
@@ -185,7 +190,7 @@ local function createUI()
     -- ============================================
     -- MINIMIZED BAR
     -- ============================================
-    local MinBar = Instance.new("Frame")
+    MinBar = Instance.new("Frame")
     MinBar.Name = "MinBar"
     MinBar.Parent = ScreenGui
     MinBar.BackgroundColor3 = BACKGROUND
@@ -196,7 +201,9 @@ local function createUI()
     MinBar.Visible = false
     MinBar.ZIndex = 20
     RoundCorners(MinBar, 14)
-    local minStroke = Instance.new("UIStroke", MinBar)
+    
+    local minStroke = Instance.new("UIStroke")
+    minStroke.Parent = MinBar
     minStroke.Color = BORDER
     minStroke.Thickness = 1
     minStroke.Transparency = 0.3
@@ -256,13 +263,6 @@ local function createUI()
     MinExpandBtn.TextSize = 16
     RoundCorners(MinExpandBtn, 15)
 
-    MinExpandBtn.MouseEnter:Connect(function()
-        TweenService:Create(MinExpandBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
-    end)
-    MinExpandBtn.MouseLeave:Connect(function()
-        TweenService:Create(MinExpandBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
-    end)
-
     -- ============================================
     -- TOP BAR
     -- ============================================
@@ -283,6 +283,7 @@ local function createUI()
 
     -- FPS Display
     local FPSDisplay = Instance.new("TextLabel")
+    FPSDisplay.Name = "FPSDisplay"
     FPSDisplay.Parent = TopBar
     FPSDisplay.BackgroundTransparency = 1
     FPSDisplay.Position = UDim2.new(1, -220, 0, 8)
@@ -294,6 +295,7 @@ local function createUI()
     FPSDisplay.TextXAlignment = Enum.TextXAlignment.Right
 
     local PingDisplay = Instance.new("TextLabel")
+    PingDisplay.Name = "PingDisplay"
     PingDisplay.Parent = TopBar
     PingDisplay.BackgroundTransparency = 1
     PingDisplay.Position = UDim2.new(1, -165, 0, 8)
@@ -305,6 +307,7 @@ local function createUI()
     PingDisplay.TextXAlignment = Enum.TextXAlignment.Right
 
     local TimerDisplay = Instance.new("TextLabel")
+    TimerDisplay.Name = "TimerDisplay"
     TimerDisplay.Parent = TopBar
     TimerDisplay.BackgroundTransparency = 1
     TimerDisplay.Position = UDim2.new(1, -100, 0, 8)
@@ -362,13 +365,6 @@ local function createUI()
     MinBtn.TextSize = 18
     RoundCorners(MinBtn, 15)
 
-    MinBtn.MouseEnter:Connect(function()
-        TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
-    end)
-    MinBtn.MouseLeave:Connect(function()
-        TweenService:Create(MinBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.3}):Play()
-    end)
-
     -- ============================================
     -- TABS
     -- ============================================
@@ -420,15 +416,6 @@ local function createUI()
         indicator.Size = UDim2.new(0, 3, 0.6, 0)
         indicator.Visible = false
         RoundCorners(indicator, 2)
-        
-        btn.MouseEnter:Connect(function()
-            TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = ELEMBGHOVER}):Play()
-        end)
-        btn.MouseLeave:Connect(function()
-            if currentTab ~= name then
-                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = TABBG}):Play()
-            end
-        end)
         
         local tabContainer = Instance.new("Frame")
         tabContainer.Name = name .. "Content"
@@ -594,7 +581,8 @@ local function createUI()
         frame.Position = UDim2.new(0, 15, 0, y)
         frame.Size = UDim2.new(1, -30, 0, 45)
         RoundCorners(frame, 10)
-        local frameStroke = Instance.new("UIStroke", frame)
+        local frameStroke = Instance.new("UIStroke")
+        frameStroke.Parent = frame
         frameStroke.Color = BORDER
         frameStroke.Thickness = 1
         frameStroke.Transparency = 0.3
@@ -673,7 +661,7 @@ local function createUI()
     AddSmallLabel("✅ Speed auto-applies on respawn", Color3.fromRGB(100, 255, 100))
 
     -- ============================================
-    -- SURVIVAL TAB (Zombies)
+    -- SURVIVAL TAB
     -- ============================================
     survivalTab.select()
 
@@ -694,8 +682,8 @@ local function createUI()
                             if char then
                                 for _, child in pairs(char:GetDescendants()) do
                                     if child:IsA("NumberValue") or child:IsA("IntValue") then
-                                        local name = child.Name:lower()
-                                        if name:find("hunger") or name:find("food") then
+                                        local name = string.lower(child.Name)
+                                        if string.find(name, "hunger") or string.find(name, "food") then
                                             child.Value = MAX_HUNGER
                                         end
                                     end
@@ -721,8 +709,8 @@ local function createUI()
                             if char then
                                 for _, child in pairs(char:GetDescendants()) do
                                     if child:IsA("NumberValue") or child:IsA("IntValue") then
-                                        local name = child.Name:lower()
-                                        if name:find("thirst") or name:find("water") or name:find("drink") then
+                                        local name = string.lower(child.Name)
+                                        if string.find(name, "thirst") or string.find(name, "water") or string.find(name, "drink") then
                                             child.Value = MAX_THIRST
                                         end
                                     end
@@ -778,9 +766,6 @@ local function createUI()
         end
     end)
     AddSmallLabel("🧟 Detects Zombies & NPCs", Color3.fromRGB(255, 100, 100))
-    AddSmallLabel("🟢 Green = Close (<50 studs)", Color3.fromRGB(100, 255, 100))
-    AddSmallLabel("🟡 Yellow = Medium (<150 studs)", Color3.fromRGB(255, 200, 100))
-    AddSmallLabel("🔴 Red = Far (>150 studs)", Color3.fromRGB(255, 100, 100))
 
     AddDivider()
     AddSection("Environment")
@@ -816,7 +801,6 @@ local function createUI()
     AddSection("Info")
     AddSmallLabel("🎯 " .. player.Name, TEXT)
     AddSmallLabel("Features: Speed + Hunger/Thirst + ESP + No Fog", TEXTDIM)
-    AddSmallLabel("NPC Detection: Automatically finds zombies", Color3.fromRGB(255, 200, 100))
 
     AddDivider()
     AddSection("Terminate")
@@ -838,112 +822,6 @@ local function createUI()
     termLabel.TextColor3 = TEXT
     termLabel.TextSize = 16
     termLabel.TextXAlignment = Enum.TextXAlignment.Center
-
-    termBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            -- Confirm dialog
-            local confirm = Instance.new("Frame")
-            confirm.Parent = MainFrame
-            confirm.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            confirm.BackgroundTransparency = 0.5
-            confirm.BorderSizePixel = 0
-            confirm.Position = UDim2.new(0, 0, 0, 0)
-            confirm.Size = UDim2.new(1, 0, 1, 0)
-            confirm.ZIndex = 999
-            
-            local box = Instance.new("Frame")
-            box.Parent = confirm
-            box.BackgroundColor3 = ELEMBG
-            box.BackgroundTransparency = 0
-            box.BorderSizePixel = 0
-            box.Position = UDim2.new(0.5, -150, 0.5, -60)
-            box.Size = UDim2.new(0, 300, 0, 120)
-            RoundCorners(box, 12)
-            box.ZIndex = 1000
-            
-            local warnLabel = Instance.new("TextLabel")
-            warnLabel.Parent = box
-            warnLabel.BackgroundTransparency = 1
-            warnLabel.Position = UDim2.new(0, 0, 0, 10)
-            warnLabel.Size = UDim2.new(1, 0, 0, 30)
-            warnLabel.Font = Enum.Font.GothamBold
-            warnLabel.Text = "⚠️ Terminate Script?"
-            warnLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-            warnLabel.TextSize = 18
-            
-            local descLabel = Instance.new("TextLabel")
-            descLabel.Parent = box
-            descLabel.BackgroundTransparency = 1
-            descLabel.Position = UDim2.new(0, 10, 0, 45)
-            descLabel.Size = UDim2.new(1, -20, 0, 20)
-            descLabel.Font = Enum.Font.Gotham
-            descLabel.Text = "This will stop all script execution."
-            descLabel.TextColor3 = TEXTDIM
-            descLabel.TextSize = 13
-            
-            local yesBtn = Instance.new("TextButton")
-            yesBtn.Parent = box
-            yesBtn.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
-            yesBtn.BackgroundTransparency = 0
-            yesBtn.BorderSizePixel = 0
-            yesBtn.Position = UDim2.new(0.5, -110, 1, -45)
-            yesBtn.Size = UDim2.new(0, 100, 0, 35)
-            yesBtn.Font = Enum.Font.GothamBold
-            yesBtn.Text = "Terminate"
-            yesBtn.TextColor3 = TEXT
-            yesBtn.TextSize = 14
-            RoundCorners(yesBtn, 8)
-            
-            local noBtn = Instance.new("TextButton")
-            noBtn.Parent = box
-            noBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
-            noBtn.BackgroundTransparency = 0
-            noBtn.BorderSizePixel = 0
-            noBtn.Position = UDim2.new(0.5, 10, 1, -45)
-            noBtn.Size = UDim2.new(0, 100, 0, 35)
-            noBtn.Font = Enum.Font.GothamBold
-            noBtn.Text = "Cancel"
-            noBtn.TextColor3 = TEXT
-            noBtn.TextSize = 14
-            RoundCorners(noBtn, 8)
-            
-            yesBtn.MouseButton1Click:Connect(function()
-                ScriptActive = false
-                pcall(function()
-                    for _, obj in pairs(Workspace:GetChildren()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                            local hl = obj:FindFirstChildOfClass("Highlight")
-                            if hl then hl:Destroy() end
-                            local bg = obj:FindFirstChildOfClass("BillboardGui")
-                            if bg then bg:Destroy() end
-                        end
-                    end
-                end)
-                pcall(function()
-                    if player.Character and player.Character:FindFirstChild("Humanoid") then
-                        player.Character.Humanoid.WalkSpeed = DEFAULT_SPEED
-                    end
-                end)
-                pcall(function()
-                    Lighting.FogEnd = 1000
-                    Lighting.FogStart = 0
-                    Lighting.Brightness = 1
-                end)
-                pcall(function() ScreenGui:Destroy() end)
-                print("✅ Script terminated. All features disabled.")
-            end)
-            
-            noBtn.MouseButton1Click:Connect(function()
-                confirm:Destroy()
-            end)
-            
-            confirm.InputBegan:Connect(function(input)
-                if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    confirm:Destroy()
-                end
-            end)
-        end
-    end)
 
     settingsTab.setY(settingsTab.getY() + 58)
 
@@ -1073,7 +951,7 @@ local function createUI()
         end
     end)
 
-    return MainFrame, MinBar, TopBar
+    return MainFrame, MinBar
 end
 
 -- ============================================
@@ -1496,9 +1374,16 @@ local function applySpeed()
 end
 
 -- ============================================
--- CREATE UI AND START SCRIPT
+-- START SCRIPT
 -- ============================================
-local MainFrame, MinBar = createUI()
+-- Create the UI
+local success, err = pcall(createUI)
+if not success then
+    warn("Failed to create UI: " .. tostring(err))
+    -- Try again with a delay
+    task.wait(1)
+    pcall(createUI)
+end
 
 -- ============================================
 -- INITIALIZE EVENTS
@@ -1577,6 +1462,9 @@ end)
 -- ============================================
 -- UPDATE LOOPS
 -- ============================================
+local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
+local saniye, dakika, saat = 0, 0, 0
+
 task.spawn(function()
     while ScriptActive do
         fpsCount = fpsCount + 1
@@ -1585,12 +1473,14 @@ task.spawn(function()
             fpsCount = 0
             lastFPSUpdate = tick()
             pcall(function()
-                local fpsLabel = MainFrame:FindFirstChild("TopBar")
-                if fpsLabel then
-                    local fpsDisplay = fpsLabel:FindFirstChild("FPSDisplay")
-                    if fpsDisplay then
-                        fpsDisplay.Text = "FPS: " .. fps
-                        fpsDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
+                if MainFrame then
+                    local topBar = MainFrame:FindFirstChild("TopBar")
+                    if topBar then
+                        local fpsDisplay = topBar:FindFirstChild("FPSDisplay")
+                        if fpsDisplay then
+                            fpsDisplay.Text = "FPS: " .. fps
+                            fpsDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
+                        end
                     end
                 end
             end)
@@ -1603,12 +1493,14 @@ task.spawn(function()
     while ScriptActive do
         pcall(function()
             local p = math.floor(Players.LocalPlayer:GetNetworkPing() * 1000)
-            local topBar = MainFrame:FindFirstChild("TopBar")
-            if topBar then
-                local pingDisplay = topBar:FindFirstChild("PingDisplay")
-                if pingDisplay then
-                    pingDisplay.Text = "Ping: " .. p .. "ms"
-                    pingDisplay.TextColor3 = p <= 80 and Color3.fromRGB(100,200,255) or (p <= 150 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,100,100))
+            if MainFrame then
+                local topBar = MainFrame:FindFirstChild("TopBar")
+                if topBar then
+                    local pingDisplay = topBar:FindFirstChild("PingDisplay")
+                    if pingDisplay then
+                        pingDisplay.Text = "Ping: " .. p .. "ms"
+                        pingDisplay.TextColor3 = p <= 80 and Color3.fromRGB(100,200,255) or (p <= 150 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,100,100))
+                    end
                 end
             end
         end)
@@ -1622,11 +1514,13 @@ task.spawn(function()
         if saniye >= 60 then saniye = 0; dakika = dakika + 1 end
         if dakika >= 60 then dakika = 0; saat = saat + 1 end
         pcall(function()
-            local topBar = MainFrame:FindFirstChild("TopBar")
-            if topBar then
-                local timerDisplay = topBar:FindFirstChild("TimerDisplay")
-                if timerDisplay then
-                    timerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
+            if MainFrame then
+                local topBar = MainFrame:FindFirstChild("TopBar")
+                if topBar then
+                    local timerDisplay = topBar:FindFirstChild("TimerDisplay")
+                    if timerDisplay then
+                        timerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
+                    end
                 end
             end
         end)
@@ -1656,4 +1550,3 @@ print("   Speed: " .. PERMANENT_SPEED)
 print("   🧟 Survival Tab: Infinite Hunger & Thirst")
 print("   👁 Visuals Tab: Player ESP + NPC/Zombie ESP")
 print("   🎨 Theme: Teal #007F7C")
-print("   ✅ Fixed: No more black screen when going to main menu")

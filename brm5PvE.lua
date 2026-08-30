@@ -1,6 +1,5 @@
 -- ============================================
--- BRM5 PvE v1 - OVERLAY GUI
--- Semi-transparent, game-integrated design
+-- BRM5 PvE v1 - OVERLAY GUI (FIXED NO FOG)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -22,7 +21,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ============================================
--- MAIN OVERLAY FRAME (Transparent Background)
+-- MAIN OVERLAY FRAME
 -- ============================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
@@ -33,6 +32,10 @@ MainFrame.Position = UDim2.new(0.5, -180, 0.5, -180)
 MainFrame.Size = UDim2.new(0, 360, 0, 360)
 MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 10
+
+local Corner = Instance.new("UICorner")
+Corner.Parent = MainFrame
+Corner.CornerRadius = UDim.new(0, 12)
 
 -- Border glow
 local Border = Instance.new("Frame")
@@ -51,25 +54,8 @@ Border2.BorderSizePixel = 0
 Border2.Size = UDim2.new(1, 0, 0, 2)
 Border2.Position = UDim2.new(0, 0, 1, -2)
 
--- Corner rounding
-local Corner = Instance.new("UICorner")
-Corner.Parent = MainFrame
-Corner.CornerRadius = UDim.new(0, 12)
-
--- Inner glow effect
-local Glow = Instance.new("Frame")
-Glow.Parent = MainFrame
-Glow.BackgroundColor3 = Color3.fromRGB(0, 180, 180)
-Glow.BackgroundTransparency = 0.9
-Glow.BorderSizePixel = 0
-Glow.Position = UDim2.new(0.05, 0, 0.05, 0)
-Glow.Size = UDim2.new(0.9, 0, 0.9, 0)
-local GlowCorner = Instance.new("UICorner")
-GlowCorner.Parent = Glow
-GlowCorner.CornerRadius = UDim.new(0, 10)
-
 -- ============================================
--- TOP BAR (Overlay Style)
+-- TOP BAR
 -- ============================================
 local TopBar = Instance.new("Frame")
 TopBar.Parent = MainFrame
@@ -82,7 +68,6 @@ local TopCorner = Instance.new("UICorner")
 TopCorner.Parent = TopBar
 TopCorner.CornerRadius = UDim.new(0, 12)
 
--- Icon
 local Icon = Instance.new("TextLabel")
 Icon.Parent = TopBar
 Icon.BackgroundTransparency = 1
@@ -93,7 +78,6 @@ Icon.Text = "🎯"
 Icon.TextColor3 = Color3.fromRGB(0, 255, 255)
 Icon.TextSize = 20
 
--- Title
 local Title = Instance.new("TextLabel")
 Title.Parent = TopBar
 Title.BackgroundTransparency = 1
@@ -105,7 +89,6 @@ Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Status indicator
 local StatusDot = Instance.new("Frame")
 StatusDot.Parent = TopBar
 StatusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
@@ -117,7 +100,6 @@ local DotCorner = Instance.new("UICorner")
 DotCorner.Parent = StatusDot
 DotCorner.CornerRadius = UDim.new(1, 0)
 
--- Status Text
 local StatusText = Instance.new("TextLabel")
 StatusText.Parent = TopBar
 StatusText.BackgroundTransparency = 1
@@ -129,7 +111,6 @@ StatusText.TextColor3 = Color3.fromRGB(0, 255, 100)
 StatusText.TextSize = 11
 StatusText.TextXAlignment = Enum.TextXAlignment.Left
 
--- Minimize Button
 local MinBtn = Instance.new("TextButton")
 MinBtn.Parent = TopBar
 MinBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -145,7 +126,6 @@ local MinCorner = Instance.new("UICorner")
 MinCorner.Parent = MinBtn
 MinCorner.CornerRadius = UDim.new(0, 4)
 
--- Close Button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = TopBar
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -162,7 +142,7 @@ CloseCorner.Parent = CloseBtn
 CloseCorner.CornerRadius = UDim.new(0, 4)
 
 -- ============================================
--- CONTENT AREA (Scrollable)
+-- CONTENT AREA
 -- ============================================
 local Content = Instance.new("ScrollingFrame")
 Content.Parent = MainFrame
@@ -199,7 +179,78 @@ local isMinimized = false
 local yPos = 10
 
 -- ============================================
--- OVERLAY UI HELPERS
+-- FOG REMOVAL FUNCTIONS (FIXED)
+-- ============================================
+local function RemoveFog()
+    pcall(function()
+        -- Method 1: Direct Lighting properties
+        Lighting.FogEnd = 999999
+        Lighting.FogStart = 999999
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 12
+        Lighting.GlobalShadows = false
+        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
+        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
+        
+        -- Method 2: Remove all fog-related objects
+        for _, child in pairs(Lighting:GetChildren()) do
+            if child:IsA("Atmosphere") or child:IsA("BlurEffect") or child:IsA("SunRaysEffect") then
+                child:Destroy()
+            end
+            if child:IsA("ColorCorrectionEffect") then
+                child:Destroy()
+            end
+        end
+        
+        -- Method 3: Check for fog in Workspace
+        for _, child in pairs(Workspace:GetChildren()) do
+            if child:IsA("Atmosphere") or child.Name:lower():find("fog") then
+                child:Destroy()
+            end
+        end
+        
+        -- Method 4: Terrain fog
+        local terrain = Workspace:FindFirstChild("Terrain")
+        if terrain then
+            terrain.WaterWaveSize = 0
+            terrain.WaterWaveSpeed = 0
+            terrain.WaterReflectance = 0
+            terrain.WaterTransparency = 1
+        end
+        
+        -- Method 5: Check for special fog scripts
+        for _, child in pairs(Lighting:GetChildren()) do
+            if child:IsA("Script") or child:IsA("LocalScript") then
+                if child.Name:lower():find("fog") or child.Name:lower():find("weather") then
+                    child:Destroy()
+                end
+            end
+        end
+    end)
+end
+
+local function RestoreFog()
+    pcall(function()
+        Lighting.FogEnd = 1000
+        Lighting.FogStart = 0
+        Lighting.Brightness = 1
+        Lighting.GlobalShadows = true
+        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        
+        -- Restore terrain
+        local terrain = Workspace:FindFirstChild("Terrain")
+        if terrain then
+            terrain.WaterWaveSize = 0.5
+            terrain.WaterWaveSpeed = 0.3
+            terrain.WaterReflectance = 0.2
+            terrain.WaterTransparency = 0.6
+        end
+    end)
+end
+
+-- ============================================
+-- UI HELPERS
 -- ============================================
 local function AddSection(text)
     local section = Instance.new("TextLabel")
@@ -236,7 +287,6 @@ local function AddOverlayToggle(text, default, callback)
     FrameCorner.Parent = frame
     FrameCorner.CornerRadius = UDim.new(0, 4)
     
-    -- Icon
     local iconLabel = Instance.new("TextLabel")
     iconLabel.Parent = frame
     iconLabel.BackgroundTransparency = 1
@@ -315,7 +365,7 @@ local function AddOverlayDivider()
 end
 
 -- ============================================
--- BUILD OVERLAY UI
+-- BUILD UI
 -- ============================================
 AddSection("⚡ SPEED")
 AddOverlayToggle("Speed Boost", true, function(s)
@@ -339,20 +389,23 @@ AddOverlayLabel("Shows players & zombies through walls", Color3.fromRGB(160, 160
 
 AddOverlayDivider()
 AddSection("🌍 ENVIRONMENT")
-AddOverlayToggle("No Fog", false, function(s)
+AddOverlayToggle("🌫️ Remove Fog", false, function(s)
     NoFogEnabled = s
     if s then
-        pcall(function()
-            Lighting.FogEnd = 99999
-            Lighting.FogStart = 99999
+        RemoveFog()
+        -- Keep removing fog every few seconds to counter game resets
+        task.spawn(function()
+            while NoFogEnabled and ScriptActive do
+                RemoveFog()
+                task.wait(0.5)
+            end
         end)
     else
-        pcall(function()
-            Lighting.FogEnd = 1000
-            Lighting.FogStart = 0
-        end)
+        RestoreFog()
     end
 end)
+AddOverlayLabel("Removes ALL fog from the game", Color3.fromRGB(100, 255, 200))
+AddOverlayLabel("Also increases brightness", Color3.fromRGB(160, 160, 180))
 
 AddOverlayDivider()
 AddSection("🍖 SURVIVAL")
@@ -368,11 +421,10 @@ end)
 AddOverlayDivider()
 AddOverlayLabel("✦ Made by Maryyy", Color3.fromRGB(0, 200, 200), 12)
 
--- Update canvas
 Content.CanvasSize = UDim2.new(0, 0, 0, yPos + 30)
 
 -- ============================================
--- TOGGLE MENU (Click icon to show/hide)
+-- TOGGLE MENU BUTTON
 -- ============================================
 local MenuToggleBtn = Instance.new("TextButton")
 MenuToggleBtn.Parent = ScreenGui
@@ -390,7 +442,6 @@ local MenuCorner = Instance.new("UICorner")
 MenuCorner.Parent = MenuToggleBtn
 MenuCorner.CornerRadius = UDim.new(1, 0)
 
--- Hover effect
 MenuToggleBtn.MouseEnter:Connect(function()
     TweenService:Create(MenuToggleBtn, TweenInfo.new(0.2), {BackgroundTransparency = 0.1}):Play()
 end)
@@ -493,15 +544,14 @@ CloseBtn.MouseButton1Click:Connect(function()
             local humanoid = player.Character:FindFirstChild("Humanoid")
             if humanoid then humanoid.WalkSpeed = DEFAULT_SPEED end
         end
-        Lighting.FogEnd = 1000
-        Lighting.FogStart = 0
+        RestoreFog()
     end)
     ScreenGui:Destroy()
     print("✅ Script terminated")
 end)
 
 -- ============================================
--- ESP FUNCTIONS (Same as before)
+-- ESP FUNCTIONS
 -- ============================================
 local ESPObjects = {}
 local NPCEntities = {}
@@ -725,6 +775,7 @@ player.CharacterAdded:Connect(function()
     isInGame = true
     applySpeed()
     trackPlayers()
+    if NoFogEnabled then RemoveFog() end
 end)
 
 -- ============================================
@@ -841,7 +892,9 @@ task.wait(1)
 isInGame = true
 applySpeed()
 trackPlayers()
+RemoveFog() -- Remove fog by default
 
 print("✅ BRM5 PvE Overlay Loaded!")
 print("   Click 🎯 icon to toggle menu")
+print("   🌫️ Fog is removed by default")
 print("   Features: Speed | ESP | No Fog | Survival")

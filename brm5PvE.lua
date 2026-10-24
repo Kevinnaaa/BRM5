@@ -1,7 +1,8 @@
 -- ============================================
 -- BRM5 PvE v1 - NO ESP + NO RECOIL + AUTO ANTI-AFK
 -- MODERN UI - Custom Teal Theme (#007F7C)
--- UI toggled ONLY with ` (backtick) key
+-- UI toggled with ` (backtick) key
+-- MinBar shows "BRM5 by Maryyy" (loading indicator)
 -- ============================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -159,6 +160,53 @@ Stroke.Parent = MainFrame
 Stroke.Color = BORDER
 Stroke.Thickness = 1
 Stroke.Transparency = 0.3
+
+-- ============================================
+-- MINI BAR (Loading Indicator — NOT clickable)
+-- ============================================
+local MinBar = Instance.new("Frame")
+MinBar.Name = "MinBar"
+MinBar.Parent = ScreenGui
+MinBar.BackgroundColor3 = BACKGROUND
+MinBar.BorderSizePixel = 0
+MinBar.Position = UDim2.new(0.5, -150, 0.95, -20)
+MinBar.Size = UDim2.new(0, 300, 0, 40)
+MinBar.Visible = true
+MinBar.ZIndex = 20
+RoundCorners(MinBar, 14)
+Instance.new("UIStroke", MinBar).Color = BORDER
+
+local MinIcon = Instance.new("TextLabel")
+MinIcon.Parent = MinBar
+MinIcon.BackgroundTransparency = 1
+MinIcon.Position = UDim2.new(0, 12, 0, 0)
+MinIcon.Size = UDim2.new(0, 25, 1, 0)
+MinIcon.Font = Enum.Font.GothamBold
+MinIcon.Text = "🎯"
+MinIcon.TextColor3 = ACCENT
+MinIcon.TextSize = 18
+
+local MinTitle = Instance.new("TextLabel")
+MinTitle.Parent = MinBar
+MinTitle.BackgroundTransparency = 1
+MinTitle.Position = UDim2.new(0, 42, 0, 0)
+MinTitle.Size = UDim2.new(0, 200, 1, 0)
+MinTitle.Font = Enum.Font.GothamBold
+MinTitle.Text = "BRM5 by Maryyy"
+MinTitle.TextColor3 = TEXT
+MinTitle.TextSize = 14
+MinTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local MinStatus = Instance.new("TextLabel")
+MinStatus.Parent = MinBar
+MinStatus.BackgroundTransparency = 1
+MinStatus.Position = UDim2.new(1, -70, 0, 0)
+MinStatus.Size = UDim2.new(0, 60, 1, 0)
+MinStatus.Font = Enum.Font.Gotham
+MinStatus.Text = "● Loaded"
+MinStatus.TextColor3 = Color3.fromRGB(60, 200, 120)
+MinStatus.TextSize = 11
+MinStatus.TextXAlignment = Enum.TextXAlignment.Right
 
 -- ============================================
 -- TOP BAR
@@ -633,7 +681,7 @@ AddSmallLabel("Prevents idle kick automatically", TEXTDIM)
 AddDivider()
 AddSection("Controls")
 AddSmallLabel("Press ` (backtick) to toggle UI", Color3.fromRGB(255, 200, 100))
-AddSmallLabel("UI hides completely when toggled off", TEXTDIM)
+AddSmallLabel("Mini bar shows 'BRM5 by Maryyy' when hidden", TEXTDIM)
 
 AddDivider()
 AddSection("Info")
@@ -759,7 +807,7 @@ AddSmallLabel("Press ` to toggle UI", TEXTDIM)
 speedTab.select()
 
 -- ============================================
--- UI TOGGLE WITH ` KEY (ONLY METHOD)
+-- UI TOGGLE WITH ` KEY
 -- ============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
@@ -768,7 +816,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         UIVisible = not UIVisible
         
         if UIVisible then
-            -- Show UI
+            -- Show full UI
             MainFrame.Visible = true
             MainFrame.Size = UDim2.new(0, 0, 0, 0)
             MainFrame.BackgroundTransparency = 1
@@ -776,14 +824,16 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                 Size = UDim2.new(0, 640, 0, 480),
                 BackgroundTransparency = 0
             }):Play()
+            MinBar.Visible = false
         else
-            -- Hide UI completely
+            -- Hide full UI, show mini bar
             TweenService:Create(MainFrame, TweenInfo.new(0.2), {
                 Size = UDim2.new(0, 0, 0, 0),
                 BackgroundTransparency = 1
             }):Play()
             task.wait(0.2)
             MainFrame.Visible = false
+            MinBar.Visible = true
         end
     end
 end)
@@ -922,6 +972,9 @@ end)
 -- INITIALIZATION
 -- ============================================
 checkInGame()
+
+-- Show mini bar initially (loading confirmation)
+MinBar.Visible = true
 
 print("✅ BRM5 PvE v1 Loaded! (No ESP + No Recoil + Auto Anti-AFK)")
 print("   Speed: " .. PERMANENT_SPEED)

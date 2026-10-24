@@ -1,6 +1,7 @@
 -- ============================================
 -- BRM5 PvE v1 - NO ESP + NO RECOIL + AUTO ANTI-AFK
 -- MODERN UI - Custom Teal Theme (#007F7C)
+-- UI toggled ONLY with ` (backtick) key
 -- ============================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -41,6 +42,7 @@ local NoRecoilEnabled = false
 local SpeedBoostEnabled = true
 local InfiniteHungerEnabled = false
 local InfiniteThirstEnabled = false
+local UIVisible = true
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
@@ -49,7 +51,6 @@ local MAX_THIRST = 100
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 local isInGame = false
-local isMinimized = false
 
 -- No Recoil settings
 local RECOIL_STRENGTH = 15
@@ -160,55 +161,6 @@ Stroke.Thickness = 1
 Stroke.Transparency = 0.3
 
 -- ============================================
--- MINIMIZED BAR
--- ============================================
-local MinBar = Instance.new("Frame")
-MinBar.Name = "MinBar"
-MinBar.Parent = ScreenGui
-MinBar.BackgroundColor3 = BACKGROUND
-MinBar.BorderSizePixel = 0
-MinBar.Position = UDim2.new(0.5, -150, 0.95, -20)
-MinBar.Size = UDim2.new(0, 300, 0, 40)
-MinBar.Visible = false
-MinBar.ZIndex = 20
-RoundCorners(MinBar, 14)
-Instance.new("UIStroke", MinBar).Color = BORDER
-
-local MinIcon = Instance.new("TextLabel")
-MinIcon.Parent = MinBar
-MinIcon.BackgroundTransparency = 1
-MinIcon.Position = UDim2.new(0, 12, 0, 0)
-MinIcon.Size = UDim2.new(0, 25, 1, 0)
-MinIcon.Font = Enum.Font.GothamBold
-MinIcon.Text = "🎯"
-MinIcon.TextColor3 = ACCENT
-MinIcon.TextSize = 18
-
-local MinTitle = Instance.new("TextLabel")
-MinTitle.Parent = MinBar
-MinTitle.BackgroundTransparency = 1
-MinTitle.Position = UDim2.new(0, 42, 0, 0)
-MinTitle.Size = UDim2.new(0, 150, 1, 0)
-MinTitle.Font = Enum.Font.GothamBold
-MinTitle.Text = "BRM5 PvE v1"
-MinTitle.TextColor3 = TEXT
-MinTitle.TextSize = 14
-MinTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-local MinExpandBtn = Instance.new("TextButton")
-MinExpandBtn.Parent = MinBar
-MinExpandBtn.BackgroundColor3 = ACCENT
-MinExpandBtn.BackgroundTransparency = 0.3
-MinExpandBtn.BorderSizePixel = 0
-MinExpandBtn.Position = UDim2.new(1, -45, 0.5, -15)
-MinExpandBtn.Size = UDim2.new(0, 30, 0, 30)
-MinExpandBtn.Font = Enum.Font.GothamBold
-MinExpandBtn.Text = "□"
-MinExpandBtn.TextColor3 = TEXT
-MinExpandBtn.TextSize = 16
-RoundCorners(MinExpandBtn, 15)
-
--- ============================================
 -- TOP BAR
 -- ============================================
 local TopBar = Instance.new("Frame")
@@ -289,19 +241,6 @@ Subtitle.Text = "No Recoil + No Fog + Auto Anti-AFK + Speed"
 Subtitle.TextColor3 = TEXTDIM
 Subtitle.TextSize = 11
 Subtitle.TextXAlignment = Enum.TextXAlignment.Left
-
-local MinBtn = Instance.new("TextButton")
-MinBtn.Parent = TopBar
-MinBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
-MinBtn.BackgroundTransparency = 0.3
-MinBtn.BorderSizePixel = 0
-MinBtn.Position = UDim2.new(1, -45, 0.5, -15)
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.Text = "─"
-MinBtn.TextColor3 = TEXT
-MinBtn.TextSize = 18
-RoundCorners(MinBtn, 15)
 
 -- ============================================
 -- TABS
@@ -680,7 +619,7 @@ AddSmallLabel("Removes ALL fog including atmosphere", Color3.fromRGB(100, 255, 2
 AddSmallLabel("Increases brightness and visibility", Color3.fromRGB(160, 180, 200))
 
 -- ============================================
--- SETTINGS TAB (No Anti-AFK toggle)
+-- SETTINGS TAB
 -- ============================================
 settingsTab.select()
 AddLabel("═══════════════════════════════════", ACCENT, 14)
@@ -690,6 +629,11 @@ AddDivider()
 AddSection("Status")
 AddSmallLabel("🤖 Anti-AFK: ACTIVE (default)", Color3.fromRGB(100, 255, 200))
 AddSmallLabel("Prevents idle kick automatically", TEXTDIM)
+
+AddDivider()
+AddSection("Controls")
+AddSmallLabel("Press ` (backtick) to toggle UI", Color3.fromRGB(255, 200, 100))
+AddSmallLabel("UI hides completely when toggled off", TEXTDIM)
 
 AddDivider()
 AddSection("Info")
@@ -807,6 +751,7 @@ end)
 settingsTab.setY(settingsTab.getY() + 58)
 AddDivider()
 AddSmallLabel("Made with ❤️ by Maryyy", Color3.fromRGB(100, 200, 195))
+AddSmallLabel("Press ` to toggle UI", TEXTDIM)
 
 -- ============================================
 -- SELECT DEFAULT TAB
@@ -814,31 +759,34 @@ AddSmallLabel("Made with ❤️ by Maryyy", Color3.fromRGB(100, 200, 195))
 speedTab.select()
 
 -- ============================================
--- WINDOW CONTROLS
+-- UI TOGGLE WITH ` KEY (ONLY METHOD)
 -- ============================================
-local function MinimizeUI()
-    if isMinimized then return end
-    isMinimized = true
-    TweenService:Create(MainFrame, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 0)}):Play()
-    task.wait(0.2)
-    MainFrame.Visible = false
-    MinBar.Visible = true
-    TweenService:Create(MinBar, TweenInfo.new(0.4), {Size = UDim2.new(0, 300, 0, 40)}):Play()
-end
-
-local function ExpandUI()
-    if not isMinimized then return end
-    isMinimized = false
-    TweenService:Create(MinBar, TweenInfo.new(0.3), {Size = UDim2.new(0, 0, 0, 40)}):Play()
-    task.wait(0.2)
-    MinBar.Visible = false
-    MainFrame.Visible = true
-    MainFrame.Size = UDim2.new(0, 0, 0, 0)
-    TweenService:Create(MainFrame, TweenInfo.new(0.4), {Size = UDim2.new(0, 640, 0, 480)}):Play()
-end
-
-MinBtn.MouseButton1Click:Connect(MinimizeUI)
-MinExpandBtn.MouseButton1Click:Connect(ExpandUI)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.Backquote then
+        UIVisible = not UIVisible
+        
+        if UIVisible then
+            -- Show UI
+            MainFrame.Visible = true
+            MainFrame.Size = UDim2.new(0, 0, 0, 0)
+            MainFrame.BackgroundTransparency = 1
+            TweenService:Create(MainFrame, TweenInfo.new(0.3), {
+                Size = UDim2.new(0, 640, 0, 480),
+                BackgroundTransparency = 0
+            }):Play()
+        else
+            -- Hide UI completely
+            TweenService:Create(MainFrame, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = 1
+            }):Play()
+            task.wait(0.2)
+            MainFrame.Visible = false
+        end
+    end
+end)
 
 -- ============================================
 -- DRAGGABLE WINDOW
@@ -978,6 +926,7 @@ checkInGame()
 print("✅ BRM5 PvE v1 Loaded! (No ESP + No Recoil + Auto Anti-AFK)")
 print("   Speed: " .. PERMANENT_SPEED)
 print("   🤖 Anti-AFK: ACTIVE (always on)")
+print("   ⌨️  Press ` (Backquote) to toggle UI on/off")
 print("   🔫 Combat Tab: No Recoil")
 print("   🌫️ No Fog: Aggressive removal")
 print("   🍖 Survival: Infinite Hunger & Thirst")

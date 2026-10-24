@@ -1,5 +1,5 @@
 -- ============================================
--- BRM5 PvE v1 - NO ESP + NO RECOIL EDITION
+-- BRM5 PvE v1 - NO ESP + NO RECOIL + AUTO ANTI-AFK
 -- MODERN UI - Custom Teal Theme (#007F7C)
 -- ============================================
 
@@ -15,6 +15,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
@@ -51,10 +52,22 @@ local isInGame = false
 local isMinimized = false
 
 -- No Recoil settings
-local RECOIL_STRENGTH = 15 -- Higher = more compensation (adjust if needed)
+local RECOIL_STRENGTH = 15
 
 -- ============================================
--- AGGRESSIVE FOG REMOVAL (same as before)
+-- AUTO ANTI-AFK (ALWAYS ON)
+-- ============================================
+player.Idled:Connect(function()
+    if ScriptActive then
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+end)
+
+-- ============================================
+-- AGGRESSIVE FOG REMOVAL
 -- ============================================
 local function RemoveFog()
     pcall(function()
@@ -272,7 +285,7 @@ Subtitle.BackgroundTransparency = 1
 Subtitle.Position = UDim2.new(0, 55, 0, 26)
 Subtitle.Size = UDim2.new(0, 200, 0, 20)
 Subtitle.Font = Enum.Font.Gotham
-Subtitle.Text = "No Recoil + No Fog + Speed"
+Subtitle.Text = "No Recoil + No Fog + Auto Anti-AFK + Speed"
 Subtitle.TextColor3 = TEXTDIM
 Subtitle.TextSize = 11
 Subtitle.TextXAlignment = Enum.TextXAlignment.Left
@@ -563,7 +576,7 @@ AddSmallLabel("⚡ Speed: " .. PERMANENT_SPEED .. " (Always On)", Color3.fromRGB
 AddSmallLabel("✅ Auto-applies on respawn", Color3.fromRGB(100, 255, 100))
 
 -- ============================================
--- COMBAT TAB (NEW - No Recoil)
+-- COMBAT TAB (No Recoil)
 -- ============================================
 combatTab.select()
 AddLabel("═══════════════════════════════════", ACCENT, 14)
@@ -667,16 +680,21 @@ AddSmallLabel("Removes ALL fog including atmosphere", Color3.fromRGB(100, 255, 2
 AddSmallLabel("Increases brightness and visibility", Color3.fromRGB(160, 180, 200))
 
 -- ============================================
--- SETTINGS TAB
+-- SETTINGS TAB (No Anti-AFK toggle)
 -- ============================================
 settingsTab.select()
 AddLabel("═══════════════════════════════════", ACCENT, 14)
 AddLabel("⚙️ SETTINGS", ACCENT, 18)
 AddLabel("═══════════════════════════════════", ACCENT, 14)
 AddDivider()
+AddSection("Status")
+AddSmallLabel("🤖 Anti-AFK: ACTIVE (default)", Color3.fromRGB(100, 255, 200))
+AddSmallLabel("Prevents idle kick automatically", TEXTDIM)
+
+AddDivider()
 AddSection("Info")
 AddSmallLabel("🎯 " .. player.Name, TEXT)
-AddSmallLabel("Features: Speed + No Recoil + No Fog + Survival", TEXTDIM)
+AddSmallLabel("Features: Speed + No Recoil + No Fog + Auto Anti-AFK", TEXTDIM)
 
 AddDivider()
 AddSection("Terminate")
@@ -893,8 +911,6 @@ end)
 -- ============================================
 -- NO RECOIL SYSTEM
 -- ============================================
--- This method applies a downward mouse movement while firing to counter recoil.
--- It works by compensating for the upward kick BRM5 applies to your aim.
 task.spawn(function()
     while ScriptActive do
         if NoRecoilEnabled and isInGame then
@@ -959,8 +975,9 @@ end)
 -- ============================================
 checkInGame()
 
-print("✅ BRM5 PvE v1 Loaded! (No ESP + No Recoil)")
+print("✅ BRM5 PvE v1 Loaded! (No ESP + No Recoil + Auto Anti-AFK)")
 print("   Speed: " .. PERMANENT_SPEED)
-print("   🔫 Combat Tab: No Recoil (Adjust RECOIL_STRENGTH if needed)")
+print("   🤖 Anti-AFK: ACTIVE (always on)")
+print("   🔫 Combat Tab: No Recoil")
 print("   🌫️ No Fog: Aggressive removal")
 print("   🍖 Survival: Infinite Hunger & Thirst")

@@ -56,6 +56,13 @@ local isInGame = false
 -- No Recoil settings
 local RECOIL_STRENGTH = 15
 
+-- Fog backup (to restore original values)
+local originalFog = {
+    FogEnd = Lighting.FogEnd,
+    FogStart = Lighting.FogStart,
+    Brightness = Lighting.Brightness
+}
+
 -- ============================================
 -- AUTO ANTI-AFK (ALWAYS ON)
 -- ============================================
@@ -69,51 +76,21 @@ player.Idled:Connect(function()
 end)
 
 -- ============================================
--- AGGRESSIVE FOG REMOVAL
+-- SIMPLE FOG REMOVAL (NON-AGGRESSIVE)
+-- Only changes Lighting fog values — no destroying
 -- ============================================
 local function RemoveFog()
     pcall(function()
-        Lighting.FogEnd = 999999
-        Lighting.FogStart = 999999
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 12
-        Lighting.GlobalShadows = false
-        Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-        Lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255)
-        
-        local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
-        if atmosphere then atmosphere:Destroy() end
-        
-        local blur = Lighting:FindFirstChildOfClass("BlurEffect")
-        if blur then blur:Destroy() end
-        
-        for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Script") or child:IsA("LocalScript") then
-                local childName = string.lower(child.Name)
-                if string.find(childName, "fog") or string.find(childName, "weather") then
-                    child:Destroy()
-                end
-            end
-        end
-        
-        local terrain = Workspace:FindFirstChild("Terrain")
-        if terrain then
-            terrain.WaterWaveSize = 0
-            terrain.WaterWaveSpeed = 0
-            terrain.WaterReflectance = 0
-            terrain.WaterTransparency = 1
-        end
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 100000
     end)
 end
 
 local function RestoreFog()
     pcall(function()
-        Lighting.FogEnd = 1000
-        Lighting.FogStart = 0
-        Lighting.Brightness = 1
-        Lighting.GlobalShadows = true
-        Lighting.Ambient = Color3.fromRGB(127, 127, 127)
-        Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+        Lighting.FogEnd = originalFog.FogEnd
+        Lighting.FogStart = originalFog.FogStart
+        Lighting.Brightness = originalFog.Brightness
     end)
 end
 
@@ -649,22 +626,22 @@ AddLabel("👁️ VISUALS", ACCENT, 18)
 AddLabel("═══════════════════════════════════", ACCENT, 14)
 AddDivider()
 AddSection("Environment")
-AddToggle("🌫️ No Fog (Aggressive)", false, function(s)
+AddToggle("🌫️ No Fog", false, function(s)
     NoFogEnabled = s
     if s then
         RemoveFog()
         task.spawn(function()
             while NoFogEnabled and ScriptActive do
                 RemoveFog()
-                task.wait(0.5)
+                task.wait(1)
             end
         end)
     else
         RestoreFog()
     end
 end)
-AddSmallLabel("Removes ALL fog including atmosphere", Color3.fromRGB(100, 255, 200))
-AddSmallLabel("Increases brightness and visibility", Color3.fromRGB(160, 180, 200))
+AddSmallLabel("Removes fog by extending fog range", Color3.fromRGB(100, 255, 200))
+AddSmallLabel("Does not modify other lighting effects", Color3.fromRGB(160, 180, 200))
 
 -- ============================================
 -- SETTINGS TAB
@@ -981,5 +958,5 @@ print("   Speed: " .. PERMANENT_SPEED)
 print("   🤖 Anti-AFK: ACTIVE (always on)")
 print("   ⌨️  Press ` (Backquote) to toggle UI on/off")
 print("   🔫 Combat Tab: No Recoil")
-print("   🌫️ No Fog: Aggressive removal")
+print("   🌫️ No Fog: Simple (lighting only)")
 print("   🍖 Survival: Infinite Hunger & Thirst")

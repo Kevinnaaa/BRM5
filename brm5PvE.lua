@@ -1,232 +1,83 @@
 --[[
-    BRM5 PvE v1 - MAIN MENU SAFE VERSION
-    Completely fixed - no more blank main menu
-    All features automatically disable when in menu
-    UI toggled with ` (backtick) key
-]]
+    BRM5 PvE v1 - FIXED SPEED VERSION
+    Permanent Speed 50 + No Fog + Enemy Highlights
+    Open World PvE Only | FPS/Ping/Time Display | Minimize to Text
+--]]
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
-local CoreGui = game:GetService("CoreGui")
 
 local ScriptActive = true
 local NoFogEnabled = false
+local Minimized = false
 local ESPEnabled = false
-local InfiniteHungerEnabled = false
-local InfiniteThirstEnabled = false
-local UIVisible = true
+local SpeedBoostEnabled = true
 
 local PERMANENT_SPEED = 50
 local DEFAULT_SPEED = 16
-local MAX_HUNGER = 100
-local MAX_THIRST = 100
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 local saniye, dakika, saat = 0, 0, 0
 
--- =============================================
--- MAIN MENU DETECTION
--- =============================================
-local function isInGame()
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char and char.Parent == Workspace and char:FindFirstChild("Humanoid") then
-            local camera = workspace.CurrentCamera
-            if camera and camera.Parent == Workspace then
-                return true
-            end
-        end
-        return false
-    end)
-    return false
-end
-
--- =============================================
--- CLEAN UP PREVIOUS INSTANCES
--- =============================================
+-- Clean up previous instances
 if getgenv().BRM5Loaded then
     getgenv().BRM5Loaded = false
-    pcall(function()
-        if CoreGui:FindFirstChild("BRM5GUI") then
-            CoreGui.BRM5GUI:Destroy()
+    if game.CoreGui:FindFirstChild("BRM5GUI") then game.CoreGui.BRM5GUI:Destroy() end
+    if game.CoreGui:FindFirstChild("BRM5MinText") then game.CoreGui.BRM5MinText:Destroy() end
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") then
+            local hl = obj:FindFirstChildOfClass("Highlight")
+            if hl then hl:Destroy() end
         end
-    end)
-
-    pcall(function()
-        for _, obj in pairs(Workspace:GetChildren()) do
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
-                local hl = obj:FindFirstChildOfClass("Highlight")
-                if hl then hl:Destroy() end
-            end
-        end
-    end)
-
-    pcall(function()
-        Lighting.FogEnd = 1000
-        Lighting.FogStart = 0
-        Lighting.FogColor = Color3.fromRGB(127, 127, 127)
-        Lighting.Brightness = 1
-    end)
+    end
 end
 getgenv().BRM5Loaded = true
 
 -- =============================================
--- SAFE SPEED
+-- SPEED (FIXED - Same as working Blox Fruits)
 -- =============================================
 local function applySpeed()
-    if not isInGame() then return end
     pcall(function()
         local char = LocalPlayer.Character
-        if char and char.Parent == Workspace then
-            local humanoid = char:FindFirstChild("Humanoid")
-            if humanoid and humanoid.WalkSpeed then
-                humanoid.WalkSpeed = PERMANENT_SPEED
-            end
+        if char and char:FindFirstChild("Humanoid") then
+            local humanoid = char.Humanoid
+            humanoid.WalkSpeed = PERMANENT_SPEED
         end
     end)
 end
 
+-- Apply speed immediately
+applySpeed()
+
+-- Apply speed on respawn
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.5)
-    if isInGame() then
+    applySpeed()
+end)
+
+-- Keep speed applied (fast loop like Blox Fruits)
+task.spawn(function()
+    while ScriptActive do
         applySpeed()
-    end
-end)
-
-task.spawn(function()
-    while ScriptActive do
-        if isInGame() then
-            applySpeed()
-        end
-        task.wait(0.5)
+        task.wait(0.3) -- Same interval as working script
     end
 end)
 
 -- =============================================
--- SAFE HUNGER/THIRST
--- =============================================
-local function findHungerThirstValues()
-    if not isInGame() then return nil, nil end
-
-    local hungerValue, thirstValue = nil, nil
-
-    pcall(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-
-        for _, child in pairs(char:GetDescendants()) do
-            if child:IsA("NumberValue") or child:IsA("IntValue") then
-                local name = child.Name:lower()
-                if name:find("hunger") or name:find("food") then
-                    hungerValue = child
-                elseif name:find("thirst") or name:find("water") or name:find("drink") then
-                    thirstValue = child
-                end
-            end
-        end
-
-        if not hungerValue or not thirstValue then
-            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if playerGui then
-                for _, child in pairs(playerGui:GetDescendants()) do
-                    if child:IsA("NumberValue") or child:IsA("IntValue") then
-                        local name = child.Name:lower()
-                        if (name:find("hunger") or name:find("food")) and not hungerValue then
-                            hungerValue = child
-                        elseif (name:find("thirst") or name:find("water")) and not thirstValue then
-                            thirstValue = child
-                        end
-                    end
-                end
-            end
-        end
-    end)
-
-    return hungerValue, thirstValue
-end
-
-local function setInfiniteHunger(enabled)
-    InfiniteHungerEnabled = enabled
-    if enabled then
-        task.spawn(function()
-            while InfiniteHungerEnabled and ScriptActive do
-                if isInGame() then
-                    pcall(function()
-                        local hungerValue = findHungerThirstValues()
-                        if hungerValue then
-                            hungerValue.Value = MAX_HUNGER
-                        end
-                    end)
-                end
-                task.wait(1)
-            end
-        end)
-    end
-end
-
-local function setInfiniteThirst(enabled)
-    InfiniteThirstEnabled = enabled
-    if enabled then
-        task.spawn(function()
-            while InfiniteThirstEnabled and ScriptActive do
-                if isInGame() then
-                    pcall(function()
-                        local _, thirstValue = findHungerThirstValues()
-                        if thirstValue then
-                            thirstValue.Value = MAX_THIRST
-                        end
-                    end)
-                end
-                task.wait(1)
-            end
-        end)
-    end
-end
-
-local function maxAllHungerThirst()
-    if not isInGame() then return end
-    pcall(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local targets = {char, LocalPlayer:FindFirstChild("PlayerGui"), LocalPlayer:FindFirstChild("leaderstats")}
-        for _, target in pairs(targets) do
-            if target then
-                for _, child in pairs(target:GetDescendants()) do
-                    if child:IsA("NumberValue") or child:IsA("IntValue") then
-                        local name = child.Name:lower()
-                        if name:find("hunger") or name:find("food") or name:find("thirst") or name:find("water") or name:find("drink") then
-                            child.Value = MAX_HUNGER
-                        end
-                    end
-                end
-            end
-        end
-    end)
-end
-
-task.spawn(function()
-    while ScriptActive do
-        if (InfiniteHungerEnabled or InfiniteThirstEnabled) and isInGame() then
-            maxAllHungerThirst()
-        end
-        task.wait(2)
-    end
-end)
-
--- =============================================
--- SAFE ESP
+-- HIGHLIGHT ESP
 -- =============================================
 local function addHighlight(player)
-    if not isInGame() then return end
     if player == LocalPlayer then return end
     pcall(function()
-        if player.Character and player.Character.Parent == Workspace and player.Character:FindFirstChild("Humanoid") then
+        if player.Character then
             local oldHL = player.Character:FindFirstChildOfClass("Highlight")
             if oldHL then oldHL:Destroy() end
+            
             local highlight = Instance.new("Highlight")
             highlight.Name = "ESP_Highlight"
             highlight.Adornee = player.Character
@@ -249,25 +100,11 @@ local function removeHighlight(player)
     end)
 end
 
-local function removeAllHighlights()
-    pcall(function()
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                removeHighlight(player)
-            end
-        end
-    end)
-end
-
 local function updateAllHighlights()
-    if not isInGame() then
-        removeAllHighlights()
-        return
-    end
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer then
             pcall(function()
-                if player.Character and player.Character.Parent == Workspace then
+                if player.Character then
                     local hl = player.Character:FindFirstChildOfClass("Highlight")
                     if hl then
                         hl.Enabled = ESPEnabled
@@ -285,8 +122,6 @@ local function updateAllHighlights()
                                 hl.OutlineColor = Color3.fromRGB(50, 255, 50)
                             end
                         end
-                    else
-                        addHighlight(player)
                     end
                 else
                     removeHighlight(player)
@@ -296,74 +131,43 @@ local function updateAllHighlights()
     end
 end
 
-task.spawn(function()
-    while ScriptActive do
-        if ESPEnabled and isInGame() then
-            updateAllHighlights()
-        elseif not isInGame() then
-            removeAllHighlights()
-        end
-        task.wait(0.5)
-    end
-end)
-
--- =============================================
--- SAFE NO FOG
--- =============================================
-local originalFogEnd = 1000
-local originalFogStart = 0
-local originalBrightness = 1
-
-local function applyNoFog(enabled)
-    if not isInGame() then
-        pcall(function()
-            Lighting.FogEnd = originalFogEnd
-            Lighting.FogStart = originalFogStart
-            Lighting.Brightness = originalBrightness
-        end)
-        return
-    end
-
-    if enabled then
-        pcall(function()
-            Lighting.FogEnd = 99999
-            Lighting.FogStart = 99999
-            Lighting.Brightness = 2
-            local at = Lighting:FindFirstChildOfClass("Atmosphere")
-            if at then at:Destroy() end
-        end)
-    else
-        pcall(function()
-            Lighting.FogEnd = originalFogEnd
-            Lighting.FogStart = originalFogStart
-            Lighting.Brightness = originalBrightness
-        end)
-    end
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then addHighlight(player) end
 end
 
-task.spawn(function()
-    while ScriptActive do
-        if NoFogEnabled then
-            applyNoFog(true)
-        end
-        task.wait(2)
-    end
+Players.PlayerAdded:Connect(function(player)
+    task.wait(1)
+    addHighlight(player)
+    updateAllHighlights()
+end)
+
+Players.PlayerRemoving:Connect(removeHighlight)
+
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        addHighlight(player)
+        updateAllHighlights()
+    end)
 end)
 
 task.spawn(function()
-    local wasInGame = false
     while ScriptActive do
-        local nowInGame = isInGame()
-        if wasInGame and not nowInGame then
-            pcall(function()
-                Lighting.FogEnd = originalFogEnd
-                Lighting.FogStart = originalFogStart
-                Lighting.Brightness = originalBrightness
-                removeAllHighlights()
-            end)
+        if ESPEnabled then 
+            updateAllHighlights()
+        else
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    pcall(function()
+                        if player.Character then
+                            local hl = player.Character:FindFirstChildOfClass("Highlight")
+                            if hl then hl.Enabled = false end
+                        end
+                    end)
+                end
+            end
         end
-        wasInGame = nowInGame
-        task.wait(1)
+        task.wait(0.5)
     end
 end)
 
@@ -373,7 +177,7 @@ end)
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "BRM5GUI"
 GUI.ResetOnSpawn = false
-GUI.Parent = CoreGui
+GUI.Parent = game.CoreGui
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Main = Instance.new("Frame")
@@ -384,6 +188,22 @@ Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
 Main.Parent = GUI
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 6)
+
+-- Minimize Text Button
+local MinimizeText = Instance.new("TextButton")
+MinimizeText.Name = "BRM5MinText"
+MinimizeText.Size = UDim2.new(0, 120, 0, 32)
+MinimizeText.Position = UDim2.new(0, 10, 0, 10)
+MinimizeText.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinimizeText.BorderSizePixel = 0
+MinimizeText.TextColor3 = Color3.fromRGB(180, 200, 255)
+MinimizeText.Text = "BRM5 PvE v1"
+MinimizeText.Font = Enum.Font.GothamBold
+MinimizeText.TextSize = 14
+MinimizeText.AutoButtonColor = false
+MinimizeText.Visible = false
+MinimizeText.Parent = GUI
+Instance.new("UICorner", MinimizeText).CornerRadius = UDim.new(0, 6)
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -426,10 +246,22 @@ TitleText.Size = UDim2.new(1, -290, 1, 0)
 TitleText.Position = UDim2.new(0, 205, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.TextColor3 = Color3.fromRGB(180, 200, 255)
-TitleText.Text = "brm5 pve | ` to toggle"
+TitleText.Text = "brm5 pve"
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 11
 TitleText.Parent = TitleBar
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Size = UDim2.new(0, 28, 0, 28)
+MinBtn.Position = UDim2.new(1, -33, 0, 2)
+MinBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Text = "—"
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.TextSize = 14
+MinBtn.AutoButtonColor = false
+MinBtn.Parent = TitleBar
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(0, 4)
 
 local ContentContainer = Instance.new("Frame")
 ContentContainer.Size = UDim2.new(1, 0, 1, -32)
@@ -481,14 +313,14 @@ local function CreateTab(name, icon, index)
     btn.AutoButtonColor = false
     btn.Parent = Sidebar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-
+    
     local page = Instance.new("Frame")
     page.Size = UDim2.new(1, -140, 1, 0)
     page.Position = UDim2.new(0, 140, 0, 0)
     page.BackgroundTransparency = 1
     page.Visible = (index == 1)
     page.Parent = ContentContainer
-
+    
     btn.MouseButton1Click:Connect(function()
         for i = 1, #TabButtons do
             TabButtons[i].BackgroundColor3 = Color3.fromRGB(23,23,23)
@@ -499,7 +331,7 @@ local function CreateTab(name, icon, index)
         btn.TextColor3 = Color3.fromRGB(255,255,255)
         page.Visible = true
     end)
-
+    
     table.insert(TabButtons, btn)
     table.insert(TabPages, page)
     return page
@@ -512,12 +344,12 @@ local function CreateSection(parent, title, yPos)
     s.Position = UDim2.new(0, 15, 0, yPos)
     s.BackgroundTransparency = 1
     s.Parent = parent
-
+    
     local line = Instance.new("Frame")
     line.Size = UDim2.new(1, 0, 0, 1)
     line.BackgroundColor3 = Color3.fromRGB(40,40,40)
     line.Parent = s
-
+    
     local text = Instance.new("TextLabel")
     text.Size = UDim2.new(1, 0, 0, 16)
     text.Position = UDim2.new(0, 0, 0, 3)
@@ -537,7 +369,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
     bg.BackgroundColor3 = Color3.fromRGB(25,25,25)
     bg.Parent = parent
     Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 4)
-
+    
     local label = Instance.new("TextLabel")
     label.Size = UDim2.new(0.65, -10, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
@@ -547,7 +379,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
     label.Font = Enum.Font.Gotham
     label.TextSize = 11
     label.Parent = bg
-
+    
     local state = default
     local switch = Instance.new("TextButton")
     switch.Size = UDim2.new(0, 36, 0, 18)
@@ -557,14 +389,14 @@ local function CreateToggle(parent, title, default, yPos, callback)
     switch.AutoButtonColor = false
     switch.Parent = bg
     Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
-
+    
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 14, 0, 14)
     dot.Position = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
     dot.BackgroundColor3 = Color3.fromRGB(255,255,255)
     dot.Parent = switch
     Instance.new("UICorner", dot).CornerRadius = UDim.new(1, 0)
-
+    
     switch.MouseButton1Click:Connect(function()
         state = not state
         switch.BackgroundColor3 = state and Color3.fromRGB(60,160,60) or Color3.fromRGB(50,50,50)
@@ -587,7 +419,7 @@ local function CreateButton(parent, title, yPos, callback, accent)
     btn.AutoButtonColor = false
     btn.Parent = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-
+    
     btn.MouseButton1Click:Connect(callback)
     btn.MouseEnter:Connect(function() btn.BackgroundColor3 = accent and Color3.fromRGB(120,30,30) or Color3.fromRGB(40,40,40) end)
     btn.MouseLeave:Connect(function() btn.BackgroundColor3 = accent or Color3.fromRGB(30,30,30) end)
@@ -609,9 +441,8 @@ end
 
 -- Create Tabs
 local SpeedPage = CreateTab("Speed", "🏃", 1)
-local ZombiesPage = CreateTab("Zombies", "🧟", 2)
-local VisualsPage = CreateTab("Visuals", "👁", 3)
-local SettingsPage = CreateTab("Settings", "⚙️", 4)
+local VisualsPage = CreateTab("Visuals", "👁", 2)
+local SettingsPage = CreateTab("Settings", "⚙️", 3)
 
 -- Speed Tab
 CreateSection(SpeedPage, "PERMANENT SPEED", 10)
@@ -619,28 +450,9 @@ CreateInfoLabel(SpeedPage, "🏃 Speed: " .. PERMANENT_SPEED .. " (Always On)", 
 CreateInfoLabel(SpeedPage, "Default: " .. DEFAULT_SPEED, 54, Color3.fromRGB(150,150,150))
 CreateInfoLabel(SpeedPage, "✅ Speed auto-applies on respawn", 74, Color3.fromRGB(100,255,100))
 
--- Zombies Tab
-CreateSection(ZombiesPage, "SURVIVAL CHEATS", 10)
-CreateToggle(ZombiesPage, "🍖 Infinite Hunger", false, 34, function(s)
-    setInfiniteHunger(s)
-end)
-CreateInfoLabel(ZombiesPage, "Keeps hunger at maximum ("..MAX_HUNGER..")", 68, Color3.fromRGB(255,200,100))
-
-CreateToggle(ZombiesPage, "💧 Infinite Thirst", false, 94, function(s)
-    setInfiniteThirst(s)
-end)
-CreateInfoLabel(ZombiesPage, "Keeps thirst at maximum ("..MAX_THIRST..")", 128, Color3.fromRGB(100,200,255))
-
 -- Visuals Tab
 CreateSection(VisualsPage, "HIGHLIGHTS", 10)
-CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s)
-    ESPEnabled = s
-    if isInGame() then
-        updateAllHighlights()
-    else
-        removeAllHighlights()
-    end
-end)
+CreateToggle(VisualsPage, "Enemy Highlights", false, 34, function(s) ESPEnabled = s; updateAllHighlights() end)
 CreateInfoLabel(VisualsPage, "🔴 Red = Close (<50 studs)", 68, Color3.fromRGB(255,100,100))
 CreateInfoLabel(VisualsPage, "🟡 Yellow = Medium (<150 studs)", 86, Color3.fromRGB(255,200,100))
 CreateInfoLabel(VisualsPage, "🟢 Green = Far (>150 studs)", 104, Color3.fromRGB(100,255,100))
@@ -648,7 +460,21 @@ CreateInfoLabel(VisualsPage, "🟢 Green = Far (>150 studs)", 104, Color3.fromRG
 CreateSection(VisualsPage, "ENVIRONMENT", 132)
 CreateToggle(VisualsPage, "No Fog", false, 156, function(s)
     NoFogEnabled = s
-    applyNoFog(s)
+    if s then 
+        pcall(function() 
+            Lighting.FogEnd = 99999
+            Lighting.FogStart = 99999
+            Lighting.Brightness = 2
+            local at = Lighting:FindFirstChildOfClass("Atmosphere")
+            if at then at:Destroy() end 
+        end)
+    else 
+        pcall(function() 
+            Lighting.FogEnd = 1000
+            Lighting.FogStart = 0
+            Lighting.Brightness = 1
+        end) 
+    end
 end)
 
 -- Settings Tab
@@ -663,67 +489,95 @@ SettingsName.Font = Enum.Font.GothamBold
 SettingsName.TextSize = 12
 SettingsName.Parent = SettingsPage
 
-CreateInfoLabel(SettingsPage, "Features: Speed + Hunger/Thirst + ESP + No Fog", 60, Color3.fromRGB(180,200,255))
-CreateInfoLabel(SettingsPage, "Press ` (backtick) to toggle UI", 80, Color3.fromRGB(255,200,100))
+CreateInfoLabel(SettingsPage, "Features: Speed Boost + No Fog + ESP", 60, Color3.fromRGB(180,200,255))
 
-CreateSection(SettingsPage, "TERMINATE", 110)
-CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 134, function()
+CreateSection(SettingsPage, "TERMINATE", 90)
+CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 114, function()
     ScriptActive = false
-    pcall(function()
-        removeAllHighlights()
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED
+    SpeedBoostEnabled = false
+    
+    for _, obj in pairs(Workspace:GetChildren()) do
+        if obj:IsA("Model") then 
+            local hl = obj:FindFirstChildOfClass("Highlight")
+            if hl then hl:Destroy() end 
         end
-        Lighting.FogEnd = originalFogEnd
-        Lighting.FogStart = originalFogStart
-        Lighting.Brightness = originalBrightness
-        GUI:Destroy()
+    end
+    
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then 
+        LocalPlayer.Character.Humanoid.WalkSpeed = DEFAULT_SPEED 
+    end
+    
+    pcall(function() 
+        Lighting.FogEnd = 1000
+        Lighting.FogStart = 0
+        Lighting.Brightness = 1
     end)
+    
+    GUI:Destroy()
     print("✅ Script terminated. All features disabled.")
 end, Color3.fromRGB(100, 20, 20))
 
--- =============================================
--- UI TOGGLE WITH ` (BACKTICK) KEY
--- =============================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Backquote then
-        UIVisible = not UIVisible
-        if UIVisible then
-            Main.Visible = true
-            Main.Size = UDim2.new(0, 0, 0, 0)
-            TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 500, 0, 300)
-            }):Play()
-        else
-            TweenService:Create(Main, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                Size = UDim2.new(0, 0, 0, 0)
-            }):Play()
-            task.wait(0.2)
-            Main.Visible = false
-        end
+-- Minimize/Maximize
+local function showMain() 
+    Main.Visible = true
+    MinimizeText.Visible = false
+    Minimized = false
+end
+
+local function showText() 
+    Main.Visible = false
+    MinimizeText.Visible = true
+    Minimized = true
+end
+
+MinBtn.MouseButton1Click:Connect(showText)
+MinimizeText.MouseButton1Click:Connect(showMain)
+
+-- Drag Minimize Text
+local idragging, idragStart, istartPos = false, nil, nil
+MinimizeText.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then 
+        idragging = true
+        idragStart = i.Position
+        istartPos = MinimizeText.Position 
     end
 end)
 
--- Drag functionality (Title Bar only)
+MinimizeText.InputEnded:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1 then
+        if idragging and (i.Position - idragStart).Magnitude < 5 then 
+            showMain() 
+        end
+        idragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(i)
+    if idragging and i.UserInputType == Enum.UserInputType.MouseMovement then
+        local d = i.Position - idragStart
+        MinimizeText.Position = UDim2.new(istartPos.X.Scale, istartPos.X.Offset + d.X, istartPos.Y.Scale, istartPos.Y.Offset + d.Y)
+    end
+end)
+
+-- Drag Main Window
 local dActive, dInput, dStart, sPos = false, nil, nil, nil
 TitleBar.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
         dActive = true
         dStart = i.Position
         sPos = Main.Position
-        i.Changed:Connect(function()
-            if i.UserInputState == Enum.UserInputState.End then
-                dActive = false
-            end
+        i.Changed:Connect(function() 
+            if i.UserInputState == Enum.UserInputState.End then 
+                dActive = false 
+            end 
         end)
     end
 end)
 
-TitleBar.InputChanged:Connect(function(i)
-    if i.UserInputType == Enum.UserInputType.MouseMovement then
-        dInput = i
-    end
+TitleBar.InputChanged:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseMovement then 
+        dInput = i 
+    end 
 end)
 
 RunService.RenderStepped:Connect(function()
@@ -733,9 +587,7 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- =============================================
--- UPDATE LOOPS
--- =============================================
+-- Update Loops
 task.spawn(function()
     while ScriptActive do
         fpsCount += 1
@@ -743,12 +595,8 @@ task.spawn(function()
             fps = math.floor(fpsCount / (tick() - lastFPSUpdate))
             fpsCount = 0
             lastFPSUpdate = tick()
-            pcall(function()
-                if FPSDisplay and FPSDisplay.Parent then
-                    FPSDisplay.Text = "FPS: " .. fps
-                    FPSDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
-                end
-            end)
+            FPSDisplay.Text = "FPS: " .. fps
+            FPSDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0,255,100) or (fps >= 25 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,80,80))
         end
         task.wait()
     end
@@ -757,11 +605,9 @@ end)
 task.spawn(function()
     while ScriptActive do
         pcall(function()
-            if PingDisplay and PingDisplay.Parent then
-                local p = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-                PingDisplay.Text = "Ping: " .. p .. "ms"
-                PingDisplay.TextColor3 = p <= 80 and Color3.fromRGB(100,200,255) or (p <= 150 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,100,100))
-            end
+            local p = math.floor(LocalPlayer:GetNetworkPing() * 1000)
+            PingDisplay.Text = "Ping: " .. p .. "ms"
+            PingDisplay.TextColor3 = p <= 80 and Color3.fromRGB(100,200,255) or (p <= 150 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,100,100))
         end)
         task.wait(1)
     end
@@ -772,18 +618,28 @@ task.spawn(function()
         saniye += 1
         if saniye >= 60 then saniye = 0; dakika += 1 end
         if dakika >= 60 then dakika = 0; saat += 1 end
-        pcall(function()
-            if TimerDisplay and TimerDisplay.Parent then
-                TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
-            end
-        end)
+        TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
         task.wait(1)
     end
 end)
 
-print("✅ BRM5 PvE v1 Loaded! (Main Menu Safe Version)")
-print("   - All features auto-disable in main menu")
-print("   - No more blank/black menu screens")
-print("   - Lighting resets when leaving game")
-print("   - UI toggled with ` (backtick) key")
-print("   🏃 Speed: " .. PERMANENT_SPEED)
+task.spawn(function()
+    while ScriptActive do
+        if NoFogEnabled then
+            pcall(function() 
+                Lighting.FogEnd = 99999
+                Lighting.FogStart = 99999
+                local at = Lighting:FindFirstChildOfClass("Atmosphere")
+                if at then at:Destroy() end 
+            end)
+        end
+        task.wait(5)
+    end
+end)
+
+print("✅ BRM5 PvE v1 Loaded! Speed: " .. PERMANENT_SPEED)
+print("   👁 Enemy Highlights - Toggle in Visuals tab")
+print("   🌫️ No Fog - Toggle in Visuals tab")
+
+
+why does this code when being executed on the game then going to the main menu it crashed the main menu option?

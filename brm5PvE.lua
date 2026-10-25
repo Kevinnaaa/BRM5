@@ -640,6 +640,3 @@ end)
 print("✅ BRM5 PvE v1 Loaded! Speed: " .. PERMANENT_SPEED)
 print("   👁 Enemy Highlights - Toggle in Visuals tab")
 print("   🌫️ No Fog - Toggle in Visuals tab")
-
-
-why does this code when being executed on the game then going to the main menu it crashed the main menu option?

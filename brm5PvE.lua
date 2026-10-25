@@ -3,6 +3,7 @@
 -- MODERN UI - Custom Teal Theme (#007F7C)
 -- UI toggled with ` (backtick) key
 -- MinBar shows "BRM5 by Maryyy" (loading indicator)
+-- No Fog: main-menu safe (auto-resets when leaving game)
 -- ============================================
 
 local ScreenGui = Instance.new("ScreenGui")
@@ -56,12 +57,12 @@ local isInGame = false
 -- No Recoil settings
 local RECOIL_STRENGTH = 15
 
--- Fog backup (to restore original values)
-local originalFog = {
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart,
-    Brightness = Lighting.Brightness
-}
+-- ============================================
+-- FOG BACKUP (for restoring original values)
+-- ============================================
+local originalFogEnd = Lighting.FogEnd
+local originalFogStart = Lighting.FogStart
+local originalBrightness = Lighting.Brightness
 
 -- ============================================
 -- AUTO ANTI-AFK (ALWAYS ON)
@@ -76,37 +77,56 @@ player.Idled:Connect(function()
 end)
 
 -- ============================================
--- SIMPLE FOG REMOVAL (NON-AGGRESSIVE)
--- Only changes Lighting fog values — no destroying
+-- IN-GAME DETECTION (main-menu safe)
 -- ============================================
-local function RemoveFog()
-    pcall(function()
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 100000
-    end)
-end
-
-local function RestoreFog()
-    pcall(function()
-        Lighting.FogEnd = originalFog.FogEnd
-        Lighting.FogStart = originalFog.FogStart
-        Lighting.Brightness = originalFog.Brightness
-    end)
-end
-
--- ============================================
--- CHECK IF PLAYER IS IN GAME
--- ============================================
-local function checkInGame()
+local function isInGame()
     pcall(function()
         local char = player.Character
         if char and char.Parent == Workspace and char:FindFirstChild("Humanoid") then
-            isInGame = true
-        else
-            isInGame = false
+            local camera = workspace.CurrentCamera
+            if camera and camera.Parent == Workspace then
+                return true
+            end
         end
+        return false
     end)
+    return false
+end
+
+local function checkInGame()
+    isInGame = isInGame()
     return isInGame
+end
+
+-- ============================================
+-- SAFE NO FOG (main-menu protected)
+-- ============================================
+local function applyNoFog(enabled)
+    -- If not in game (main menu), always restore original lighting
+    if not isInGame() then
+        pcall(function()
+            Lighting.FogEnd = originalFogEnd
+            Lighting.FogStart = originalFogStart
+            Lighting.Brightness = originalBrightness
+        end)
+        return
+    end
+
+    if enabled then
+        pcall(function()
+            Lighting.FogEnd = 99999
+            Lighting.FogStart = 99999
+            Lighting.Brightness = 2
+            local at = Lighting:FindFirstChildOfClass("Atmosphere")
+            if at then at:Destroy() end
+        end)
+    else
+        pcall(function()
+            Lighting.FogEnd = originalFogEnd
+            Lighting.FogStart = originalFogStart
+            Lighting.Brightness = originalBrightness
+        end)
+    end
 end
 
 -- ============================================
@@ -628,20 +648,10 @@ AddDivider()
 AddSection("Environment")
 AddToggle("🌫️ No Fog", false, function(s)
     NoFogEnabled = s
-    if s then
-        RemoveFog()
-        task.spawn(function()
-            while NoFogEnabled and ScriptActive do
-                RemoveFog()
-                task.wait(1)
-            end
-        end)
-    else
-        RestoreFog()
-    end
+    applyNoFog(s)
 end)
-AddSmallLabel("Removes fog by extending fog range", Color3.fromRGB(100, 255, 200))
-AddSmallLabel("Does not modify other lighting effects", Color3.fromRGB(160, 180, 200))
+AddSmallLabel("Auto-resets in main menu (no blank screen)", Color3.fromRGB(100, 255, 200))
+AddSmallLabel("Extends fog range only — no other lighting changes", Color3.fromRGB(160, 180, 200))
 
 -- ============================================
 -- SETTINGS TAB
@@ -756,7 +766,12 @@ termBtn.InputBegan:Connect(function(input)
                     player.Character.Humanoid.WalkSpeed = DEFAULT_SPEED
                 end
             end)
-            pcall(RestoreFog)
+            -- Restore original fog
+            pcall(function()
+                Lighting.FogEnd = originalFogEnd
+                Lighting.FogStart = originalFogStart
+                Lighting.Brightness = originalBrightness
+            end)
             pcall(function() ScreenGui:Destroy() end)
             print("✅ Script terminated.")
         end)
@@ -855,7 +870,7 @@ end)
 -- SPEED SYSTEM
 -- ============================================
 local function applySpeed()
-    if not isInGame then return end
+    if not isInGame() then return end
     pcall(function()
         local char = player.Character
         if char then
@@ -869,14 +884,14 @@ end
 
 player.CharacterAdded:Connect(function()
     task.wait(0.5)
-    checkInGame()
+    isInGame = isInGame()
     applySpeed()
-    if NoFogEnabled then RemoveFog() end
+    if NoFogEnabled then applyNoFog(true) end
 end)
 
 task.spawn(function()
     while ScriptActive do
-        if isInGame then
+        if isInGame() then
             applySpeed()
         end
         task.wait(0.3)
@@ -888,7 +903,7 @@ end)
 -- ============================================
 task.spawn(function()
     while ScriptActive do
-        if NoRecoilEnabled and isInGame then
+        if NoRecoilEnabled and isInGame() then
             if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
                 pcall(function()
                     local mousemoverel = mousemoverel or (Input and Input.MouseMoveRel) or mouse_moverel
@@ -901,6 +916,48 @@ task.spawn(function()
         else
             task.wait(0.1)
         end
+    end
+end)
+
+-- ============================================
+-- FOG MONITOR (main-menu safe)
+-- ============================================
+-- Re-applies fog removal while in game, and restores when in menu
+task.spawn(function()
+    while ScriptActive do
+        if NoFogEnabled then
+            applyNoFog(true)
+        else
+            -- If user turned it off, only restore if not already
+            pcall(function()
+                if Lighting.FogEnd ~= originalFogEnd then
+                    Lighting.FogEnd = originalFogEnd
+                    Lighting.FogStart = originalFogStart
+                    Lighting.Brightness = originalBrightness
+                end
+            end)
+        end
+        task.wait(2)
+    end
+end)
+
+-- ============================================
+-- GAME STATE MONITOR (reset fog when leaving game)
+-- ============================================
+task.spawn(function()
+    local wasInGame = false
+    while ScriptActive do
+        local nowInGame = isInGame()
+        if wasInGame and not nowInGame then
+            -- Just left game to menu — restore lighting
+            pcall(function()
+                Lighting.FogEnd = originalFogEnd
+                Lighting.FogStart = originalFogStart
+                Lighting.Brightness = originalBrightness
+            end)
+        end
+        wasInGame = nowInGame
+        task.wait(1)
     end
 end)
 
@@ -948,7 +1005,7 @@ end)
 -- ============================================
 -- INITIALIZATION
 -- ============================================
-checkInGame()
+isInGame = isInGame()
 
 -- Show mini bar initially (loading confirmation)
 MinBar.Visible = true
@@ -958,5 +1015,5 @@ print("   Speed: " .. PERMANENT_SPEED)
 print("   🤖 Anti-AFK: ACTIVE (always on)")
 print("   ⌨️  Press ` (Backquote) to toggle UI on/off")
 print("   🔫 Combat Tab: No Recoil")
-print("   🌫️ No Fog: Simple (lighting only)")
+print("   🌫️ No Fog: Main-menu safe (auto-resets)")
 print("   🍖 Survival: Infinite Hunger & Thirst")

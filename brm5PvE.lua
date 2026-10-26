@@ -1,7 +1,7 @@
 -- BRM5 Rayfield GUI Script
 -- LocalScript in StarterPlayerScripts
 -- Backtick toggles GUI + unlocks mouse cursor
--- Real-time NPC distance ESP + Anti-AFK
+-- Real-time NPC distance ESP + Anti-AFK + Adjustable Distance
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -16,7 +16,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- Configuration
 local ESPEnabled = true
 local ShowDistance = true
-local MaxDistance = 200
+local MaxDistance = 200 -- Default starting distance
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local scriptRunning = true
 local AntiAFKEnabled = true
@@ -121,6 +121,19 @@ ESPTab:CreateToggle({
     Callback = function(Value) ShowDistance = Value end,
 })
 
+-- Distance Slider (Min 100, Max 500)
+ESPTab:CreateSlider({
+    Name = "Max ESP Distance",
+    Range = {100, 500},
+    Increment = 10,
+    Suffix = "m",
+    CurrentValue = MaxDistance,
+    Flag = "MaxDistanceSlider",
+    Callback = function(Value)
+        MaxDistance = Value
+    end,
+})
+
 -- ============================================================
 -- COMBAT TAB
 -- ============================================================
@@ -202,6 +215,7 @@ local function terminateScript()
         if espData.Billboard then espData.Billboard:Destroy() end
         if espData.Beam then espData.Beam:Destroy() end
         if espData.DiedConnection then espData.DiedConnection:Disconnect() end
+        if espData.AncestryConnection then espData.AncestryConnection:Disconnect() end
     end
     ESPObjects = {}
 
@@ -243,6 +257,7 @@ local function isNPC(model)
     if Players:GetPlayerFromCharacter(model) then return false end
     if model.Name == player.Name then return false end
     
+    -- Check for obvious dead/corpse names
     local lowerName = string.lower(model.Name)
     if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then
         return false
@@ -271,6 +286,7 @@ local function removeESP(character)
     if espData.Billboard then espData.Billboard:Destroy() end
     if espData.Beam then espData.Beam:Destroy() end
     if espData.DiedConnection then espData.DiedConnection:Disconnect() end
+    if espData.AncestryConnection then espData.AncestryConnection:Disconnect() end
     
     ESPObjects[character] = nil
 end
@@ -289,7 +305,7 @@ local function createESP(character)
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = MaxDistance * 10
+    billboard.MaxDistance = 500 * 10 -- Hard render limit (matches max slider)
     billboard.Parent = character
 
     local nameLabel = Instance.new("TextLabel")
@@ -326,11 +342,18 @@ local function createESP(character)
     beam.FaceCamera = true
     beam.Parent = character
 
+    -- 1. Cleanup when the Humanoid dies naturally
     local diedConnection = humanoid.Died:Connect(function()
         removeESP(character)
     end)
 
-    -- Cache the Humanoid reference so we don't have to find it every frame
+    -- 2. Cleanup when the game completely deletes the Humanoid or the model
+    local ancestryConnection = character.AncestryChanged:Connect(function()
+        if not character:IsDescendantOf(workspace) then
+            removeESP(character)
+        end
+    end)
+
     ESPObjects[character] = {
         Billboard = billboard,
         DistanceLabel = distanceLabel,
@@ -338,31 +361,27 @@ local function createESP(character)
         RootPart = rootPart,
         Humanoid = humanoid, 
         DiedConnection = diedConnection,
+        AncestryConnection = ancestryConnection,
         LastDistance = -1
     }
 end
 
-local function updateESP(character)
+local function updateESP(character, pPos)
     local espData = ESPObjects[character]
     if not espData then return end
 
     local rootPart = espData.RootPart
-    local humanoid = espData.Humanoid -- Cached reference, no FindFirstChild needed
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
     
+    -- If RootPart is gone, Humanoid is deleted, or Health is 0 -> Remove ESP
     if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
         removeESP(character)
         return
     end
 
-    local playerChar = player.Character
-    if not playerChar then return end
-    local playerRoot = getRootPart(playerChar)
-    if not playerRoot then return end
-
-    local distance = (rootPart.Position - playerRoot.Position).Magnitude
+    local distance = (rootPart.Position - pPos).Magnitude
     espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
 
-    -- Only update text if distance actually changed by a whole meter
     if ShowDistance and espData.Billboard.Enabled then
         local roundedDistance = math.floor(distance)
         if roundedDistance ~= espData.LastDistance then
@@ -405,41 +424,24 @@ scanForNPCs()
 
 local scanAccumulator = 0
 
--- Changed from RenderStepped to Heartbeat to protect FPS
 addConnection(RunService.Heartbeat:Connect(function(dt)
     if not scriptRunning then return end
 
     scanAccumulator = scanAccumulator + dt
-    if scanAccumulator >= 0.5 then -- Scans for new NPCs every 0.5 seconds instead of 0.1
+    if scanAccumulator >= 0.5 then 
         scanAccumulator = 0
         scanForNPCs()
     end
 
-    -- Cache player position ONCE per frame instead of per NPC
+    -- Cache player position ONCE per frame
     local playerChar = player.Character
     if not playerChar then return end
     local playerRoot = getRootPart(playerChar)
     if not playerRoot then return end
     local pPos = playerRoot.Position
 
-    for character, espData in pairs(ESPObjects) do
-        local rootPart = espData.RootPart
-        local humanoid = espData.Humanoid
-        
-        if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
-            removeESP(character)
-        else
-            local distance = (rootPart.Position - pPos).Magnitude
-            espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
-
-            if ShowDistance and espData.Billboard.Enabled then
-                local roundedDistance = math.floor(distance)
-                if roundedDistance ~= espData.LastDistance then
-                    espData.DistanceLabel.Text = formatDistance(distance)
-                    espData.LastDistance = roundedDistance
-                end
-            end
-        end
+    for character, _ in pairs(ESPObjects) do
+        updateESP(character, pPos)
     end
 end))
 

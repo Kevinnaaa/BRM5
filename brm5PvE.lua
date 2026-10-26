@@ -1,7 +1,7 @@
 -- BRM5 Rayfield GUI Script
 -- LocalScript in StarterPlayerScripts
 -- Backtick toggles GUI + unlocks mouse cursor
--- Real-time NPC distance ESP + Health Tracker + Anti-AFK
+-- Real-time NPC distance ESP + Anti-AFK
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -16,7 +16,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- Configuration
 local ESPEnabled = true
 local ShowDistance = true
-local MaxDistance = 500
+local MaxDistance = 200 -- Restricted to 200 meters
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local scriptRunning = true
 local AntiAFKEnabled = true
@@ -294,7 +294,7 @@ local function isNPC(model)
     if Players:GetPlayerFromCharacter(model) then return false end
     if model.Name == player.Name then return false end
     
-    -- Check for obvious dead/corpse names
+    -- Ignore obvious dead/corpse models
     local lowerName = string.lower(model.Name)
     if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then
         return false
@@ -324,7 +324,6 @@ local function formatDistance(distance)
     end
 end
 
--- Helper function to safely clean up ESP
 local function removeESP(character)
     local espData = ESPObjects[character]
     if not espData then return end
@@ -342,21 +341,21 @@ local function createESP(character)
     if not rootPart then return end
     
     local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return end -- Don't create ESP on already dead bodies
+    if not humanoid or humanoid.Health <= 0 then return end 
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BRM5_ESP"
-    billboard.Size = UDim2.new(0, 80, 0, 35) 
+    billboard.Size = UDim2.new(0, 80, 0, 25) -- Back to 2 lines
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = MaxDistance * 10
     billboard.Parent = character
 
-    -- 1. Name Label (Non-bold)
+    -- 1. Name Label
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Name = "NameLabel"
-    nameLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = character.Name
     nameLabel.TextColor3 = ESPColor
@@ -369,8 +368,8 @@ local function createESP(character)
     -- 2. Distance Label
     local distanceLabel = Instance.new("TextLabel")
     distanceLabel.Name = "DistanceLabel"
-    distanceLabel.Size = UDim2.new(1, 0, 0.33, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.33, 0)
+    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.Text = "0m"
     distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -379,20 +378,6 @@ local function createESP(character)
     distanceLabel.TextStrokeTransparency = 0
     distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     distanceLabel.Parent = billboard
-
-    -- 3. Health Label
-    local healthLabel = Instance.new("TextLabel")
-    healthLabel.Name = "HealthLabel"
-    healthLabel.Size = UDim2.new(1, 0, 0.33, 0)
-    healthLabel.Position = UDim2.new(0, 0, 0.66, 0)
-    healthLabel.BackgroundTransparency = 1
-    healthLabel.Text = "❤️ 100 HP"
-    healthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    healthLabel.TextSize = 8
-    healthLabel.Font = Enum.Font.SourceSans
-    healthLabel.TextStrokeTransparency = 0
-    healthLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
-    healthLabel.Parent = billboard
 
     local beam = Instance.new("Beam")
     beam.Name = "ESP_Beam"
@@ -403,7 +388,7 @@ local function createESP(character)
     beam.FaceCamera = true
     beam.Parent = character
 
-    -- Listen for the exact moment of death to instantly wipe the ESP
+    -- Instant cleanup on death
     local diedConnection = humanoid.Died:Connect(function()
         removeESP(character)
     end)
@@ -412,7 +397,6 @@ local function createESP(character)
         Billboard = billboard,
         NameLabel = nameLabel,
         DistanceLabel = distanceLabel,
-        HealthLabel = healthLabel,
         Beam = beam,
         RootPart = rootPart,
         DiedConnection = diedConnection,
@@ -427,14 +411,8 @@ local function updateESP(character)
     local rootPart = espData.RootPart
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     
-    -- Check if the model or humanoid is entirely gone
-    if not rootPart or not rootPart.Parent or not humanoid then
-        removeESP(character)
-        return
-    end
-
-    -- Fallback check: if health is 0, remove immediately
-    if humanoid.Health <= 0 then
+    -- Cleanup if model is gone or NPC died
+    if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
         removeESP(character)
         return
     end
@@ -444,25 +422,7 @@ local function updateESP(character)
     local playerRoot = getRootPart(playerChar)
     if not playerRoot then return end
 
-    -- Update Health Text
-    local hp = math.floor(humanoid.Health)
-    local maxHp = math.floor(humanoid.MaxHealth)
-    
-    -- Extra safety check: if health is suspiciously changing to 0/max after death
-    if hp == 0 then
-        removeESP(character)
-        return
-    end
-
-    espData.HealthLabel.Text = string.format("❤️ %d/%d HP", hp, maxHp)
-
-    if hp < maxHp * 0.3 then
-        espData.HealthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    else
-        espData.HealthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    end
-
-    -- Update Distance
+    -- Update Distance and Visibility (Strictly 200m limit)
     local distance = (rootPart.Position - playerRoot.Position).Magnitude
     espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
 

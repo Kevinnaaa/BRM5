@@ -1,5 +1,5 @@
 -- BRM5 Rayfield GUI Script
--- Optimized ESP version
+-- Optimized ESP version (Fixed)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -41,6 +41,7 @@ local NPCFolders = {
 }
 
 local ESPObjects = {}
+local lastESPUpdate = 0 -- Fixed: Kept separate from the table
 
 -- ============================================================
 -- MOUSE / CURSOR HELPERS
@@ -232,8 +233,8 @@ local function createESP(character)
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = MaxDistance * 2 -- Hard cull for renderer
-    billboard.Enabled = false -- Start disabled until loop checks distance
+    billboard.MaxDistance = MaxDistance * 2 
+    billboard.Enabled = false -- Wait for distance loop
     billboard.Parent = character
 
     local nameLabel = Instance.new("TextLabel")
@@ -270,7 +271,6 @@ local function createESP(character)
 
     local diedConnection = humanoid.Died:Connect(function() removeESP(character) end)
 
-    -- Cache the references to save CPU in the update loop
     ESPObjects[character] = {
         Billboard = billboard,
         DistanceLabel = distanceLabel,
@@ -313,7 +313,6 @@ local scanAccumulator = 0
 addConnection(RunService.Heartbeat:Connect(function(dt)
     if not scriptRunning then return end
 
-    -- Re-scan for new NPCs every 1 second
     scanAccumulator = scanAccumulator + dt
     if scanAccumulator >= 1 then
         scanAccumulator = 0
@@ -322,43 +321,40 @@ addConnection(RunService.Heartbeat:Connect(function(dt)
 
     if not ESPEnabled then return end
 
-    -- Cache player position ONCE per update
+    -- Get player position ONCE
     local playerChar = player.Character
     if not playerChar then return end
     local playerRoot = getRootPart(playerChar)
     if not playerRoot then return end
     local pPos = playerRoot.Position
 
-    -- Throttle the ESP update to ~10 FPS instead of 60 FPS
+    -- Throttle to ~10 updates per second
     local currentTime = tick()
-    if currentTime - (ESPObjects.LastUpdate or 0) < 0.1 then return end
-    ESPObjects.LastUpdate = currentTime
+    if currentTime - lastESPUpdate < 0.1 then return end
+    lastESPUpdate = currentTime
 
     for character, espData in pairs(ESPObjects) do
-        if typeof(character) == "Instance" then -- Skip the LastUpdate number key
-            local rootPart = espData.RootPart
-            local humanoid = espData.Humanoid
+        local rootPart = espData.RootPart
+        local humanoid = espData.Humanoid
+        
+        -- Safe check (in case model is being destroyed)
+        if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
+            removeESP(character)
+        else
+            local distance = (rootPart.Position - pPos).Magnitude
             
-            -- Fast cull: If dead or missing, remove immediately
-            if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
-                removeESP(character)
-            else
-                local distance = (rootPart.Position - pPos).Magnitude
+            if distance <= MaxDistance then
+                espData.Billboard.Enabled = true
                 
-                -- Distance Culling (Don't update text if too far)
-                if distance <= MaxDistance then
-                    espData.Billboard.Enabled = true
-                    
-                    if ShowDistance then
-                        local roundedDist = math.floor(distance)
-                        if roundedDist ~= espData.LastDistance then
-                            espData.DistanceLabel.Text = formatDistance(distance)
-                            espData.LastDistance = roundedDist
-                        end
+                if ShowDistance then
+                    local roundedDist = math.floor(distance)
+                    if roundedDist ~= espData.LastDistance then
+                        espData.DistanceLabel.Text = formatDistance(distance)
+                        espData.LastDistance = roundedDist
                     end
-                else
-                    espData.Billboard.Enabled = false
                 end
+            else
+                espData.Billboard.Enabled = false
             end
         end
     end

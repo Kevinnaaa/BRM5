@@ -1,7 +1,5 @@
 -- BRM5 Rayfield GUI Script
--- LocalScript in StarterPlayerScripts
--- Backtick toggles GUI + unlocks mouse cursor
--- Real-time NPC distance ESP + Anti-AFK
+-- Optimized ESP version
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -10,24 +8,19 @@ local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 
--- Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- Configuration
 local ESPEnabled = true
 local ShowDistance = true
-local MaxDistance = 200 -- Restricted to 200 meters
+local MaxDistance = 200 
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local scriptRunning = true
 local AntiAFKEnabled = true
 
 -- Fog state
 local FogDisabled = false
-local savedFog = {
-    FogEnd = Lighting.FogEnd,
-    FogStart = Lighting.FogStart,
-    FogColor = Lighting.FogColor,
-}
+local savedFog = { FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart, FogColor = Lighting.FogColor }
 local savedAtmospheres = {}
 local savedColorCorrections = {}
 
@@ -35,25 +28,16 @@ local savedColorCorrections = {}
 local guiOpen = false
 local originalMouseIconEnabled = UserInputService.MouseIconEnabled
 local mouseOverrideConnection = nil
-
--- Connection tracking for clean termination
 local connections = {}
 
-local function addConnection(conn)
-    table.insert(connections, conn)
-end
+local function addConnection(conn) table.insert(connections, conn) end
 
 local NPCFolders = {
-    workspace:FindFirstChild("Enemies"),
-    workspace:FindFirstChild("Hostiles"),
-    workspace:FindFirstChild("NPCs"),
-    workspace:FindFirstChild("EnemyNPCs"),
-    workspace:FindFirstChild("Soldiers"),
-    workspace:FindFirstChild("Guards"),
-    workspace:FindFirstChild("AI"),
-    workspace:FindFirstChild("AIs"),
-    workspace:FindFirstChild("Mission"),
-    workspace:FindFirstChild("Missions"),
+    workspace:FindFirstChild("Enemies"), workspace:FindFirstChild("Hostiles"),
+    workspace:FindFirstChild("NPCs"), workspace:FindFirstChild("EnemyNPCs"),
+    workspace:FindFirstChild("Soldiers"), workspace:FindFirstChild("Guards"),
+    workspace:FindFirstChild("AI"), workspace:FindFirstChild("AIs"),
+    workspace:FindFirstChild("Mission"), workspace:FindFirstChild("Missions"),
 }
 
 local ESPObjects = {}
@@ -84,7 +68,6 @@ local function lockMouse()
         mouseOverrideConnection:Disconnect()
         mouseOverrideConnection = nil
     end
-
     UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
     UserInputService.MouseIconEnabled = originalMouseIconEnabled
 end
@@ -96,60 +79,31 @@ end
 local Window = Rayfield:CreateWindow({
     Name = "BRM5 Script",
     LoadingTitle = "BRM5 Advanced GUI",
-    LoadingSubtitle = "by Rayfield",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = nil,
-        FileName = "BRM5_Config"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "noinvitelink",
-        RememberJoins = true
-    },
-    KeySystem = false,
-    KeySettings = {
-        Title = "BRM5 Key",
-        Subtitle = "Key System",
-        Note = "No key required",
-        FileName = "BRM5Key",
-        SaveKey = true,
-        GrabKeyFromSite = false,
-        Key = {"BRM5"}
-    }
+    LoadingSubtitle = "Optimized ESP",
+    ConfigurationSaving = { Enabled = true, FileName = "BRM5_Config" },
+    Discord = { Enabled = false, Invite = "noinvitelink", RememberJoins = true },
+    KeySystem = false
 })
-
--- ============================================================
--- ESP TAB
--- ============================================================
 
 local ESPTab = Window:CreateTab("ESP", nil)
 local ESPSection = ESPTab:CreateSection("ESP Settings")
 
-local ESPToggle = ESPTab:CreateToggle({
-    Name = "ESP Enabled",
-    CurrentValue = true,
-    Flag = "ESPEnabled",
-    Callback = function(Value)
-        ESPEnabled = Value
-    end,
+ESPTab:CreateToggle({
+    Name = "ESP Enabled", CurrentValue = true, Flag = "ESPEnabled",
+    Callback = function(Value) ESPEnabled = Value end,
 })
 
-local DistanceToggle = ESPTab:CreateToggle({
-    Name = "Show Distance (Real-time)",
-    CurrentValue = true,
-    Flag = "ShowDistance",
-    Callback = function(Value)
-        ShowDistance = Value
-    end,
+ESPTab:CreateToggle({
+    Name = "Show Distance", CurrentValue = true, Flag = "ShowDistance",
+    Callback = function(Value) ShowDistance = Value end,
 })
 
 -- ============================================================
--- COMBAT TAB
+-- COMBAT / SETTINGS TABS
 -- ============================================================
 
 local CombatTab = Window:CreateTab("Combat", nil)
-local CombatSection = CombatTab:CreateSection("Combat Settings")
+local SettingsTab = Window:CreateTab("Settings", nil)
 
 local function disableFog()
     if FogDisabled then return end
@@ -163,20 +117,12 @@ local function disableFog()
 
     savedAtmospheres = {}
     for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("Atmosphere") then
-            table.insert(savedAtmospheres, v)
-            v.Parent = nil
-        end
+        if v:IsA("Atmosphere") then table.insert(savedAtmospheres, v); v.Parent = nil end
     end
-
     savedColorCorrections = {}
     for _, v in ipairs(Lighting:GetChildren()) do
-        if v:IsA("ColorCorrection") then
-            table.insert(savedColorCorrections, v)
-            v.Parent = nil
-        end
+        if v:IsA("ColorCorrection") then table.insert(savedColorCorrections, v); v.Parent = nil end
     end
-
     FogDisabled = true
 end
 
@@ -186,106 +132,61 @@ local function restoreFog()
     Lighting.FogStart = savedFog.FogStart
     Lighting.FogColor = savedFog.FogColor
 
-    for _, v in ipairs(savedAtmospheres) do
-        if v and v.Parent == nil then
-            v.Parent = Lighting
-        end
-    end
+    for _, v in ipairs(savedAtmospheres) do if v and v.Parent == nil then v.Parent = Lighting end end
     savedAtmospheres = {}
-
-    for _, v in ipairs(savedColorCorrections) do
-        if v and v.Parent == nil then
-            v.Parent = Lighting
-        end
-    end
+    for _, v in ipairs(savedColorCorrections) do if v and v.Parent == nil then v.Parent = Lighting end end
     savedColorCorrections = {}
-
     FogDisabled = false
 end
 
-local FogToggle = CombatTab:CreateToggle({
-    Name = "Disable Fog",
-    CurrentValue = false,
-    Flag = "FogDisabled",
-    Callback = function(Value)
-        if Value then
-            disableFog()
-        else
-            restoreFog()
-        end
-    end,
+CombatTab:CreateToggle({
+    Name = "Disable Fog", CurrentValue = false, Flag = "FogDisabled",
+    Callback = function(Value) if Value then disableFog() else restoreFog() end end,
+})
+
+SettingsTab:CreateToggle({
+    Name = "Anti-AFK", CurrentValue = true, Flag = "AntiAFK",
+    Callback = function(Value) AntiAFKEnabled = Value end,
 })
 
 -- ============================================================
--- SETTINGS TAB
--- ============================================================
-
-local SettingsTab = Window:CreateTab("Settings", nil)
-local SettingsSection = SettingsTab:CreateSection("Script")
-
-local AntiAFKToggle = SettingsTab:CreateToggle({
-    Name = "Anti-AFK",
-    CurrentValue = true,
-    Flag = "AntiAFK",
-    Callback = function(Value)
-        AntiAFKEnabled = Value
-    end,
-})
-
--- ============================================================
--- CLEANUP / TERMINATION FUNCTION
+-- CLEANUP
 -- ============================================================
 
 local function terminateScript()
-    -- Stop all loops
     scriptRunning = false
-
-    -- 1. Restore environment
     restoreFog()
     lockMouse()
 
-    -- 2. Destroy all ESPs
-    for character, espData in pairs(ESPObjects) do
+    for _, espData in pairs(ESPObjects) do
         if espData.Billboard then espData.Billboard:Destroy() end
         if espData.Beam then espData.Beam:Destroy() end
         if espData.DiedConnection then espData.DiedConnection:Disconnect() end
     end
     ESPObjects = {}
 
-    -- 3. Disconnect all tracked events/loops
-    for _, conn in ipairs(connections) do
-        pcall(function() conn:Disconnect() end)
-    end
+    for _, conn in ipairs(connections) do pcall(function() conn:Disconnect() end) end
     connections = {}
 
     if mouseOverrideConnection then
         mouseOverrideConnection:Disconnect()
         mouseOverrideConnection = nil
     end
-
-    -- 4. Destroy Rayfield
     Rayfield:Destroy()
 end
 
-local TerminateButton = SettingsTab:CreateButton({
-    Name = "Terminate Script",
-    Callback = terminateScript,
-})
+SettingsTab:CreateButton({ Name = "Terminate Script", Callback = terminateScript })
 
 -- ============================================================
 -- ANTI-AFK
 -- ============================================================
-
 addConnection(player.Idled:Connect(function()
     if not AntiAFKEnabled then return end
-    pcall(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end)
+    pcall(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 end))
 
 -- ============================================================
--- NPC DETECTION / ESP
+-- NPC DETECTION & ESP
 -- ============================================================
 
 local function isNPC(model)
@@ -293,45 +194,27 @@ local function isNPC(model)
     if not model:FindFirstChild("Humanoid") then return false end
     if Players:GetPlayerFromCharacter(model) then return false end
     if model.Name == player.Name then return false end
-    
-    -- Ignore obvious dead/corpse models
     local lowerName = string.lower(model.Name)
-    if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then
-        return false
-    end
-
-    if not model:FindFirstChild("HumanoidRootPart")
-        and not model:FindFirstChild("Torso")
-        and not model:FindFirstChild("Head") then
-        return false
-    end
-    return true
+    if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then return false end
+    return model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("Torso") or model:FindFirstChild("Head")
 end
 
 local function getRootPart(character)
-    return character:FindFirstChild("HumanoidRootPart")
-        or character:FindFirstChild("Torso")
-        or character:FindFirstChild("Head")
+    return character:FindFirstChild("HumanoidRootPart") or character:FindFirstChild("Torso") or character:FindFirstChild("Head")
 end
 
 local function formatDistance(distance)
-    if distance >= 1000 then
-        return string.format("%.2f km", distance / 1000)
-    elseif distance >= 100 then
-        return string.format("%.0f m", distance)
-    else
-        return string.format("%.1f m", distance)
-    end
+    if distance >= 1000 then return string.format("%.2f km", distance / 1000)
+    elseif distance >= 100 then return string.format("%.0f m", distance)
+    else return string.format("%.1f m", distance) end
 end
 
 local function removeESP(character)
     local espData = ESPObjects[character]
     if not espData then return end
-
     if espData.Billboard then espData.Billboard:Destroy() end
     if espData.Beam then espData.Beam:Destroy() end
     if espData.DiedConnection then espData.DiedConnection:Disconnect() end
-    
     ESPObjects[character] = nil
 end
 
@@ -345,16 +228,15 @@ local function createESP(character)
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BRM5_ESP"
-    billboard.Size = UDim2.new(0, 80, 0, 25) -- Back to 2 lines
+    billboard.Size = UDim2.new(0, 80, 0, 25)
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = MaxDistance * 10
+    billboard.MaxDistance = MaxDistance * 2 -- Hard cull for renderer
+    billboard.Enabled = false -- Start disabled until loop checks distance
     billboard.Parent = character
 
-    -- 1. Name Label
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "NameLabel"
     nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = character.Name
@@ -365,9 +247,7 @@ local function createESP(character)
     nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     nameLabel.Parent = billboard
 
-    -- 2. Distance Label
     local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Name = "DistanceLabel"
     distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
     distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
     distanceLabel.BackgroundTransparency = 1
@@ -388,51 +268,18 @@ local function createESP(character)
     beam.FaceCamera = true
     beam.Parent = character
 
-    -- Instant cleanup on death
-    local diedConnection = humanoid.Died:Connect(function()
-        removeESP(character)
-    end)
+    local diedConnection = humanoid.Died:Connect(function() removeESP(character) end)
 
+    -- Cache the references to save CPU in the update loop
     ESPObjects[character] = {
         Billboard = billboard,
-        NameLabel = nameLabel,
         DistanceLabel = distanceLabel,
         Beam = beam,
         RootPart = rootPart,
+        Humanoid = humanoid,
         DiedConnection = diedConnection,
         LastDistance = -1
     }
-end
-
-local function updateESP(character)
-    local espData = ESPObjects[character]
-    if not espData then return end
-
-    local rootPart = espData.RootPart
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    
-    -- Cleanup if model is gone or NPC died
-    if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
-        removeESP(character)
-        return
-    end
-
-    local playerChar = player.Character
-    if not playerChar then return end
-    local playerRoot = getRootPart(playerChar)
-    if not playerRoot then return end
-
-    -- Update Distance and Visibility (Strictly 200m limit)
-    local distance = (rootPart.Position - playerRoot.Position).Magnitude
-    espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
-
-    if ShowDistance and espData.Billboard.Enabled then
-        local roundedDistance = math.floor(distance * 10) / 10
-        if math.abs(roundedDistance - espData.LastDistance) >= 0.1 or espData.LastDistance == -1 then
-            espData.DistanceLabel.Text = formatDistance(distance)
-            espData.LastDistance = roundedDistance
-        end
-    end
 end
 
 local function scanForNPCs()
@@ -452,33 +299,68 @@ addConnection(workspace.DescendantAdded:Connect(function(descendant)
     if not scriptRunning then return end
     if descendant:IsA("Model") and isNPC(descendant) then
         createESP(descendant)
-    elseif descendant:IsA("Humanoid") then
-        local character = descendant.Parent
-        if character and isNPC(character) then
-            createESP(character)
-        end
     end
 end))
 
 scanForNPCs()
 
 -- ============================================================
--- MAIN UPDATE LOOP (real-time ESP + NPC scan)
+-- OPTIMIZED ESP UPDATE LOOP (Runs 10x per second)
 -- ============================================================
 
 local scanAccumulator = 0
 
-addConnection(RunService.RenderStepped:Connect(function(dt)
+addConnection(RunService.Heartbeat:Connect(function(dt)
     if not scriptRunning then return end
 
+    -- Re-scan for new NPCs every 1 second
     scanAccumulator = scanAccumulator + dt
-    if scanAccumulator >= 0.1 then
+    if scanAccumulator >= 1 then
         scanAccumulator = 0
         scanForNPCs()
     end
 
-    for character, _ in pairs(ESPObjects) do
-        updateESP(character)
+    if not ESPEnabled then return end
+
+    -- Cache player position ONCE per update
+    local playerChar = player.Character
+    if not playerChar then return end
+    local playerRoot = getRootPart(playerChar)
+    if not playerRoot then return end
+    local pPos = playerRoot.Position
+
+    -- Throttle the ESP update to ~10 FPS instead of 60 FPS
+    local currentTime = tick()
+    if currentTime - (ESPObjects.LastUpdate or 0) < 0.1 then return end
+    ESPObjects.LastUpdate = currentTime
+
+    for character, espData in pairs(ESPObjects) do
+        if typeof(character) == "Instance" then -- Skip the LastUpdate number key
+            local rootPart = espData.RootPart
+            local humanoid = espData.Humanoid
+            
+            -- Fast cull: If dead or missing, remove immediately
+            if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
+                removeESP(character)
+            else
+                local distance = (rootPart.Position - pPos).Magnitude
+                
+                -- Distance Culling (Don't update text if too far)
+                if distance <= MaxDistance then
+                    espData.Billboard.Enabled = true
+                    
+                    if ShowDistance then
+                        local roundedDist = math.floor(distance)
+                        if roundedDist ~= espData.LastDistance then
+                            espData.DistanceLabel.Text = formatDistance(distance)
+                            espData.LastDistance = roundedDist
+                        end
+                    end
+                else
+                    espData.Billboard.Enabled = false
+                end
+            end
+        end
     end
 end))
 
@@ -488,12 +370,12 @@ end))
 
 addConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if input.KeyCode ~= Enum.KeyCode.Backquote then return end
-
     guiOpen = not guiOpen
 
     if guiOpen then
-        unlockMouse()
         Rayfield:Toggle(true)
+        task.wait()
+        unlockMouse()
     else
         Rayfield:Toggle(false)
         lockMouse()

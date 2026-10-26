@@ -1,7 +1,7 @@
 -- BRM5 Rayfield GUI Script
 -- LocalScript in StarterPlayerScripts
 -- Backtick toggles GUI + unlocks mouse cursor
--- Real-time NPC distance ESP + Anti-AFK
+-- Real-time NPC distance ESP + Health Tracker + Anti-AFK
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -248,6 +248,7 @@ local function terminateScript()
     for character, espData in pairs(ESPObjects) do
         if espData.Billboard then espData.Billboard:Destroy() end
         if espData.Beam then espData.Beam:Destroy() end
+        if espData.DiedConnection then espData.DiedConnection:Disconnect() end
     end
     ESPObjects = {}
 
@@ -292,6 +293,13 @@ local function isNPC(model)
     if not model:FindFirstChild("Humanoid") then return false end
     if Players:GetPlayerFromCharacter(model) then return false end
     if model.Name == player.Name then return false end
+    
+    -- Check for obvious dead/corpse names
+    local lowerName = string.lower(model.Name)
+    if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then
+        return false
+    end
+
     if not model:FindFirstChild("HumanoidRootPart")
         and not model:FindFirstChild("Torso")
         and not model:FindFirstChild("Head") then
@@ -316,42 +324,75 @@ local function formatDistance(distance)
     end
 end
 
+-- Helper function to safely clean up ESP
+local function removeESP(character)
+    local espData = ESPObjects[character]
+    if not espData then return end
+
+    if espData.Billboard then espData.Billboard:Destroy() end
+    if espData.Beam then espData.Beam:Destroy() end
+    if espData.DiedConnection then espData.DiedConnection:Disconnect() end
+    
+    ESPObjects[character] = nil
+end
+
 local function createESP(character)
     if ESPObjects[character] then return end
     local rootPart = getRootPart(character)
     if not rootPart then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then return end -- Don't create ESP on already dead bodies
 
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "BRM5_ESP"
-    billboard.Size = UDim2.new(0, 80, 0, 25)
+    billboard.Size = UDim2.new(0, 80, 0, 35) 
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = MaxDistance * 10
     billboard.Parent = character
 
+    -- 1. Name Label (Non-bold)
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.33, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = character.Name
     nameLabel.TextColor3 = ESPColor
-    nameLabel.TextSize = 8
-    nameLabel.Font = Enum.Font.SourceSansBold
+    nameLabel.TextSize = 9
+    nameLabel.Font = Enum.Font.SourceSans 
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     nameLabel.Parent = billboard
 
+    -- 2. Distance Label
     local distanceLabel = Instance.new("TextLabel")
-    distanceLabel.Size = UDim2.new(1, 0, 0.5, 0)
-    distanceLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.33, 0)
     distanceLabel.BackgroundTransparency = 1
     distanceLabel.Text = "0m"
     distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    distanceLabel.TextSize = 7
+    distanceLabel.TextSize = 8
     distanceLabel.Font = Enum.Font.SourceSans
     distanceLabel.TextStrokeTransparency = 0
     distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
     distanceLabel.Parent = billboard
+
+    -- 3. Health Label
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Name = "HealthLabel"
+    healthLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    healthLabel.Position = UDim2.new(0, 0, 0.66, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.Text = "❤️ 100 HP"
+    healthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    healthLabel.TextSize = 8
+    healthLabel.Font = Enum.Font.SourceSans
+    healthLabel.TextStrokeTransparency = 0
+    healthLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    healthLabel.Parent = billboard
 
     local beam = Instance.new("Beam")
     beam.Name = "ESP_Beam"
@@ -362,12 +403,19 @@ local function createESP(character)
     beam.FaceCamera = true
     beam.Parent = character
 
+    -- Listen for the exact moment of death to instantly wipe the ESP
+    local diedConnection = humanoid.Died:Connect(function()
+        removeESP(character)
+    end)
+
     ESPObjects[character] = {
         Billboard = billboard,
         NameLabel = nameLabel,
         DistanceLabel = distanceLabel,
+        HealthLabel = healthLabel,
         Beam = beam,
         RootPart = rootPart,
+        DiedConnection = diedConnection,
         LastDistance = -1
     }
 end
@@ -377,18 +425,17 @@ local function updateESP(character)
     if not espData then return end
 
     local rootPart = espData.RootPart
-    if not rootPart or not rootPart.Parent then
-        if espData.Billboard then espData.Billboard:Destroy() end
-        if espData.Beam then espData.Beam:Destroy() end
-        ESPObjects[character] = nil
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    
+    -- Check if the model or humanoid is entirely gone
+    if not rootPart or not rootPart.Parent or not humanoid then
+        removeESP(character)
         return
     end
 
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then
-        if espData.Billboard then espData.Billboard:Destroy() end
-        if espData.Beam then espData.Beam:Destroy() end
-        ESPObjects[character] = nil
+    -- Fallback check: if health is 0, remove immediately
+    if humanoid.Health <= 0 then
+        removeESP(character)
         return
     end
 
@@ -397,6 +444,25 @@ local function updateESP(character)
     local playerRoot = getRootPart(playerChar)
     if not playerRoot then return end
 
+    -- Update Health Text
+    local hp = math.floor(humanoid.Health)
+    local maxHp = math.floor(humanoid.MaxHealth)
+    
+    -- Extra safety check: if health is suspiciously changing to 0/max after death
+    if hp == 0 then
+        removeESP(character)
+        return
+    end
+
+    espData.HealthLabel.Text = string.format("❤️ %d/%d HP", hp, maxHp)
+
+    if hp < maxHp * 0.3 then
+        espData.HealthLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    else
+        espData.HealthLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+
+    -- Update Distance
     local distance = (rootPart.Position - playerRoot.Position).Magnitude
     espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
 

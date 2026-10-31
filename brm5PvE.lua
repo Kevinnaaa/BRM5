@@ -111,7 +111,18 @@ ESPTab:CreateToggle({
     Name = "ESP Enabled",
     CurrentValue = true,
     Flag = "ESPEnabled",
-    Callback = function(Value) ESPEnabled = Value end,
+    Callback = function(Value) 
+        ESPEnabled = Value
+        -- Immediately hide/show all existing ESPs when toggled
+        for character, espData in pairs(ESPObjects) do
+            if espData.Billboard then
+                espData.Billboard.Enabled = ESPEnabled
+            end
+            if espData.Beam then
+                espData.Beam.Enabled = ESPEnabled
+            end
+        end
+    end,
 })
 
 ESPTab:CreateToggle({
@@ -306,6 +317,7 @@ local function createESP(character)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
     billboard.MaxDistance = 500 * 10 -- Hard render limit (matches max slider)
+    billboard.Enabled = ESPEnabled -- Apply current toggle state immediately
     billboard.Parent = character
 
     local nameLabel = Instance.new("TextLabel")
@@ -340,6 +352,7 @@ local function createESP(character)
     beam.Width0 = 0.2
     beam.Width1 = 0.2
     beam.FaceCamera = true
+    beam.Enabled = ESPEnabled -- Apply current toggle state immediately
     beam.Parent = character
 
     -- 1. Cleanup when the Humanoid dies naturally
@@ -380,7 +393,17 @@ local function updateESP(character, pPos)
     end
 
     local distance = (rootPart.Position - pPos).Magnitude
-    espData.Billboard.Enabled = distance <= MaxDistance and ESPEnabled
+    
+    -- Check both ESPEnabled (toggle) AND MaxDistance (slider)
+    local shouldShow = distance <= MaxDistance and ESPEnabled
+    
+    if espData.Billboard then
+        espData.Billboard.Enabled = shouldShow
+    end
+    
+    if espData.Beam then
+        espData.Beam.Enabled = shouldShow
+    end
 
     if ShowDistance and espData.Billboard.Enabled then
         local roundedDistance = math.floor(distance)

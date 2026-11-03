@@ -2,7 +2,7 @@
 -- LocalScript in StarterPlayerScripts
 -- Backtick toggles GUI + unlocks mouse cursor
 -- Real-time NPC distance ESP + Anti-AFK + Adjustable Distance
--- Added: Center Red Dot Crosshair
+-- Added: Perfectly Centered Red Dot Crosshair
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -21,7 +21,7 @@ local MaxDistance = 200 -- Default starting distance
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local scriptRunning = true
 local AntiAFKEnabled = true
-local CrosshairEnabled = true -- NEW: Crosshair toggle
+local CrosshairEnabled = true 
 
 -- Fog state
 local FogDisabled = false
@@ -58,31 +58,38 @@ local NPCFolders = {
 local ESPObjects = {}
 
 -- ============================================================
--- CROSSHAIR SYSTEM
+-- CROSSHAIR SYSTEM (Perfectly Centered on ANY Resolution)
 -- ============================================================
 local CrosshairGui = Instance.new("ScreenGui")
 CrosshairGui.Name = "BRM5_Crosshair"
 CrosshairGui.ResetOnSpawn = false
 CrosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+CrosshairGui.IgnoreGuiInset = true -- Ignores the topbar so it's the true center
 CrosshairGui.Parent = game:GetService("CoreGui")
 
 local Dot = Instance.new("Frame")
 Dot.Name = "RedDot"
-Dot.Size = UDim2.new(0, 6, 0, 6) -- Size of the dot (6x6 pixels)
-Dot.Position = UDim2.new(0.5, -3, 0.5, -3) -- Centered on screen
-Dot.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+Dot.Size = UDim2.new(0, 6, 0, 6) -- 6x6 pixel dot
+Dot.Position = UDim2.new(0.5, -3, 0.5, -3) -- Exactly 50% center
+Dot.AnchorPoint = Vector2.new(0.5, 0.5) -- Guarantees perfect center math
+Dot.Position = UDim2.new(0.5, 0, 0.5, 0) -- AnchorPoint handles the offset
+Dot.BackgroundColor3 = Color3.fromRGB(255, 0, 0) 
 Dot.BorderSizePixel = 1
-Dot.BorderColor3 = Color3.fromRGB(0, 0, 0) -- Black outline for visibility
+Dot.BorderColor3 = Color3.fromRGB(0, 0, 0) 
 Dot.Parent = CrosshairGui
 
 local DotCorner = Instance.new("UICorner")
-DotCorner.CornerRadius = UDim.new(1, 0) -- Makes it a circle
+DotCorner.CornerRadius = UDim.new(1, 0) -- Circle
 DotCorner.Parent = Dot
 
--- Update crosshair visibility instantly
 local function updateCrosshair()
     if CrosshairGui then
-        CrosshairGui.Enabled = CrosshairEnabled
+        -- Hide crosshair if UI is open, otherwise respect the toggle
+        if guiOpen then
+            CrosshairGui.Enabled = false
+        else
+            CrosshairGui.Enabled = CrosshairEnabled
+        end
     end
 end
 updateCrosshair()
@@ -145,14 +152,9 @@ ESPTab:CreateToggle({
     Flag = "ESPEnabled",
     Callback = function(Value) 
         ESPEnabled = Value
-        -- Immediately hide/show all existing ESPs when toggled
         for character, espData in pairs(ESPObjects) do
-            if espData.Billboard then
-                espData.Billboard.Enabled = ESPEnabled
-            end
-            if espData.Beam then
-                espData.Beam.Enabled = ESPEnabled
-            end
+            if espData.Billboard then espData.Billboard.Enabled = ESPEnabled end
+            if espData.Beam then espData.Beam.Enabled = ESPEnabled end
         end
     end,
 })
@@ -164,7 +166,6 @@ ESPTab:CreateToggle({
     Callback = function(Value) ShowDistance = Value end,
 })
 
--- Distance Slider (Min 100, Max 500)
 ESPTab:CreateSlider({
     Name = "Max ESP Distance",
     Range = {100, 500},
@@ -172,9 +173,7 @@ ESPTab:CreateSlider({
     Suffix = "m",
     CurrentValue = MaxDistance,
     Flag = "MaxDistanceSlider",
-    Callback = function(Value)
-        MaxDistance = Value
-    end,
+    Callback = function(Value) MaxDistance = Value end,
 })
 
 -- ============================================================
@@ -245,7 +244,7 @@ SettingsTab:CreateToggle({
     Callback = function(Value) AntiAFKEnabled = Value end,
 })
 
--- NEW: Crosshair Toggle
+-- Crosshair Toggle
 SettingsTab:CreateToggle({
     Name = "Red Dot Crosshair",
     CurrentValue = true,
@@ -281,10 +280,7 @@ local function terminateScript()
         mouseOverrideConnection = nil
     end
 
-    -- Destroy Crosshair GUI on termination
-    if CrosshairGui then
-        CrosshairGui:Destroy()
-    end
+    if CrosshairGui then CrosshairGui:Destroy() end
 
     Rayfield:Destroy()
 end
@@ -316,7 +312,6 @@ local function isNPC(model)
     if Players:GetPlayerFromCharacter(model) then return false end
     if model.Name == player.Name then return false end
     
-    -- Check for obvious dead/corpse names
     local lowerName = string.lower(model.Name)
     if string.find(lowerName, "dead") or string.find(lowerName, "corpse") or string.find(lowerName, "ragdoll") then
         return false
@@ -364,8 +359,8 @@ local function createESP(character)
     billboard.StudsOffset = Vector3.new(0, 2.5, 0)
     billboard.Adornee = rootPart
     billboard.AlwaysOnTop = true
-    billboard.MaxDistance = 500 * 10 -- Hard render limit (matches max slider)
-    billboard.Enabled = ESPEnabled -- Apply current toggle state immediately
+    billboard.MaxDistance = 500 * 10 
+    billboard.Enabled = ESPEnabled 
     billboard.Parent = character
 
     local nameLabel = Instance.new("TextLabel")
@@ -400,15 +395,13 @@ local function createESP(character)
     beam.Width0 = 0.2
     beam.Width1 = 0.2
     beam.FaceCamera = true
-    beam.Enabled = ESPEnabled -- Apply current toggle state immediately
+    beam.Enabled = ESPEnabled
     beam.Parent = character
 
-    -- 1. Cleanup when the Humanoid dies naturally
     local diedConnection = humanoid.Died:Connect(function()
         removeESP(character)
     end)
 
-    -- 2. Cleanup when the game completely deletes the Humanoid or the model
     local ancestryConnection = character.AncestryChanged:Connect(function()
         if not character:IsDescendantOf(workspace) then
             removeESP(character)
@@ -434,24 +427,16 @@ local function updateESP(character, pPos)
     local rootPart = espData.RootPart
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     
-    -- If RootPart is gone, Humanoid is deleted, or Health is 0 -> Remove ESP
     if not rootPart or not rootPart.Parent or not humanoid or humanoid.Health <= 0 then
         removeESP(character)
         return
     end
 
     local distance = (rootPart.Position - pPos).Magnitude
-    
-    -- Check both ESPEnabled (toggle) AND MaxDistance (slider)
     local shouldShow = distance <= MaxDistance and ESPEnabled
     
-    if espData.Billboard then
-        espData.Billboard.Enabled = shouldShow
-    end
-    
-    if espData.Beam then
-        espData.Beam.Enabled = shouldShow
-    end
+    if espData.Billboard then espData.Billboard.Enabled = shouldShow end
+    if espData.Beam then espData.Beam.Enabled = shouldShow end
 
     if ShowDistance and espData.Billboard.Enabled then
         local roundedDistance = math.floor(distance)
@@ -504,7 +489,6 @@ addConnection(RunService.Heartbeat:Connect(function(dt)
         scanForNPCs()
     end
 
-    -- Cache player position ONCE per frame
     local playerChar = player.Character
     if not playerChar then return end
     local playerRoot = getRootPart(playerChar)
@@ -517,7 +501,7 @@ addConnection(RunService.Heartbeat:Connect(function(dt)
 end))
 
 -- ============================================================
--- BACKTICK = TOGGLE GUI + MOUSE
+-- BACKTICK = TOGGLE GUI + MOUSE + CROSSHAIR VISIBILITY
 -- ============================================================
 
 addConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -533,4 +517,7 @@ addConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
         Rayfield:Toggle(false)
         lockMouse()
     end
+    
+    -- Update crosshair (hides when GUI is open)
+    updateCrosshair()
 end))

@@ -2,6 +2,7 @@
 -- LocalScript in StarterPlayerScripts
 -- Backtick toggles GUI + unlocks mouse cursor
 -- Real-time NPC distance ESP + Anti-AFK + Adjustable Distance
+-- Added: Center Red Dot Crosshair
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -20,6 +21,7 @@ local MaxDistance = 200 -- Default starting distance
 local ESPColor = Color3.fromRGB(255, 50, 50)
 local scriptRunning = true
 local AntiAFKEnabled = true
+local CrosshairEnabled = true -- NEW: Crosshair toggle
 
 -- Fog state
 local FogDisabled = false
@@ -54,6 +56,36 @@ local NPCFolders = {
 }
 
 local ESPObjects = {}
+
+-- ============================================================
+-- CROSSHAIR SYSTEM
+-- ============================================================
+local CrosshairGui = Instance.new("ScreenGui")
+CrosshairGui.Name = "BRM5_Crosshair"
+CrosshairGui.ResetOnSpawn = false
+CrosshairGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+CrosshairGui.Parent = game:GetService("CoreGui")
+
+local Dot = Instance.new("Frame")
+Dot.Name = "RedDot"
+Dot.Size = UDim2.new(0, 6, 0, 6) -- Size of the dot (6x6 pixels)
+Dot.Position = UDim2.new(0.5, -3, 0.5, -3) -- Centered on screen
+Dot.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Red
+Dot.BorderSizePixel = 1
+Dot.BorderColor3 = Color3.fromRGB(0, 0, 0) -- Black outline for visibility
+Dot.Parent = CrosshairGui
+
+local DotCorner = Instance.new("UICorner")
+DotCorner.CornerRadius = UDim.new(1, 0) -- Makes it a circle
+DotCorner.Parent = Dot
+
+-- Update crosshair visibility instantly
+local function updateCrosshair()
+    if CrosshairGui then
+        CrosshairGui.Enabled = CrosshairEnabled
+    end
+end
+updateCrosshair()
 
 -- ============================================================
 -- MOUSE / CURSOR HELPERS
@@ -213,6 +245,17 @@ SettingsTab:CreateToggle({
     Callback = function(Value) AntiAFKEnabled = Value end,
 })
 
+-- NEW: Crosshair Toggle
+SettingsTab:CreateToggle({
+    Name = "Red Dot Crosshair",
+    CurrentValue = true,
+    Flag = "CrosshairToggle",
+    Callback = function(Value) 
+        CrosshairEnabled = Value
+        updateCrosshair()
+    end,
+})
+
 -- ============================================================
 -- CLEANUP / TERMINATION FUNCTION
 -- ============================================================
@@ -236,6 +279,11 @@ local function terminateScript()
     if mouseOverrideConnection then
         mouseOverrideConnection:Disconnect()
         mouseOverrideConnection = nil
+    end
+
+    -- Destroy Crosshair GUI on termination
+    if CrosshairGui then
+        CrosshairGui:Destroy()
     end
 
     Rayfield:Destroy()
